@@ -1,53 +1,177 @@
-import { Redirect, Route } from 'react-router-dom';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
-import Home from './pages/Home';
+import React from 'react';
+import { AppProvider, useApp } from './context/AppContext';
+import { RoleSwitcherBanner } from './components/shared/RoleSwitcherBanner';
+import { IncomingRequestModal } from './screens/mecanico/IncomingRequestModal';
 
-/* Core CSS required for Ionic components to work properly */
-import '@ionic/react/css/core.css';
+// Ionic Components
+import {
+  IonApp,
+  IonRouterOutlet,
+  IonTabs,
+  IonTabBar,
+  IonTabButton,
+  IonToast,
+} from './components/ionic/IonicComponents';
 
-/* Basic CSS for apps built with Ionic */
-import '@ionic/react/css/normalize.css';
-import '@ionic/react/css/structure.css';
-import '@ionic/react/css/typography.css';
+// Auth Screens
+import { WelcomeScreen } from './screens/auth/WelcomeScreen';
+import { LoginScreen } from './screens/auth/LoginScreen';
+import { RegisterSelectScreen } from './screens/auth/RegisterSelectScreen';
+import { RegisterClientScreen } from './screens/auth/RegisterClientScreen';
+import { RegisterMechanicScreen } from './screens/auth/RegisterMechanicScreen';
+import { RegisterAdminScreen } from './screens/auth/RegisterAdminScreen';
 
-/* Optional CSS utils that can be commented out */
-import '@ionic/react/css/padding.css';
-import '@ionic/react/css/float-elements.css';
-import '@ionic/react/css/text-alignment.css';
-import '@ionic/react/css/text-transformation.css';
-import '@ionic/react/css/flex-utils.css';
-import '@ionic/react/css/display.css';
 
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
+/*
+// Client Screens
+import { ClientHomeScreen } from './screens/cliente/ClientHomeScreen';
+import { RequestWizardScreen } from './screens/cliente/RequestWizardScreen';
+import { SearchingScreen } from './screens/cliente/SearchingScreen';
+import { TrackingScreen } from './screens/cliente/TrackingScreen';
+import { VehiclesScreen } from './screens/cliente/VehiclesScreen';
+import { HistoryScreen } from './screens/cliente/HistoryScreen';
+import { ClientProfileScreen } from './screens/cliente/ClientProfileScreen';
 
-/* import '@ionic/react/css/palettes/dark.always.css'; */
-/* import '@ionic/react/css/palettes/dark.class.css'; */
-import '@ionic/react/css/palettes/dark.system.css';
+// Mechanic Screens
+import { MechanicHomeScreen } from './screens/mecanico/MechanicHomeScreen';
+import { ServiceFlowScreen } from './screens/mecanico/ServiceFlowScreen';
+import { FinalizeServiceScreen } from './screens/mecanico/FinalizeServiceScreen';
+*/
 
-/* Theme variables */
-import './theme/variables.css';
+// Admin Screens
+import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen';
+import { MechanicValidationScreen } from './screens/admin/MechanicValidationScreen';
+import { GlobalMapScreen } from './screens/admin/GlobalMapScreen';
 
-setupIonicReact();
+const MainRouter: React.FC = () => {
+  const { currentRoute, currentRole, navigateTo, toast, hideToast } = useApp();
 
-const App: React.FC = () => (
-  <IonApp>
-    <IonReactRouter>
-      <IonRouterOutlet>
-        <Route exact path="/home">
-          <Home />
-        </Route>
-        <Route exact path="/">
-          <Redirect to="/home" />
-        </Route>
-      </IonRouterOutlet>
-    </IonReactRouter>
-  </IonApp>
-);
+  // Render view based on route
+  const renderScreen = () => {
+    switch (currentRoute) {
+      // Auth routes
+      case '/auth/welcome':
+        return <WelcomeScreen />;
+      case '/auth/login':
+        return <LoginScreen />;
+      case '/auth/register':
+        return <RegisterSelectScreen />;
+      case '/auth/register/client':
+        return <RegisterClientScreen />;
+      case '/auth/register/mechanic':
+        return <RegisterMechanicScreen />;
+      case '/auth/register/admin':
+        return <RegisterAdminScreen />;
 
-export default App;
+        /*
+        case '/cliente/home':
+          return <ClientHomeScreen />;
+      // Client routes
+      case '/cliente/request':
+        return <RequestWizardScreen />;
+      case '/cliente/searching':
+        return <SearchingScreen />;
+      case '/cliente/tracking':
+        return <TrackingScreen />;
+      case '/cliente/vehicles':
+        return <VehiclesScreen />;
+      case '/cliente/history':
+        return <HistoryScreen />;
+      case '/cliente/profile':
+        return <ClientProfileScreen />;
+
+      // Mechanic routes
+      case '/mecanico/home':
+        return <MechanicHomeScreen />;
+      case '/mecanico/service-flow':
+        return <ServiceFlowScreen />;
+      case '/mecanico/finalize':
+        return <FinalizeServiceScreen />;
+        */
+
+      // Admin routes
+      case '/admin/dashboard':
+        return <AdminDashboardScreen />;
+      case '/admin/mechanics':
+        return <MechanicValidationScreen />;
+      case '/admin/map':
+        return <GlobalMapScreen />;
+
+      default:
+        return <ClientHomeScreen />;
+    }
+  };
+
+  // Determine if client bottom tab bar should be visible
+  const isClientTabRoute =
+    currentRole === 'cliente' &&
+    ['/cliente/home', '/cliente/history', '/cliente/vehicles', '/cliente/profile'].includes(
+      currentRoute
+    );
+
+  return (
+    <IonApp>
+      {/* Test Role Switcher Banner */}
+      <RoleSwitcherBanner />
+
+      {/* Mechanic Incoming Order Modal Listener */}
+      <IncomingRequestModal />
+
+      {/* Main Screen Outlet */}
+      <IonRouterOutlet>{renderScreen()}</IonRouterOutlet>
+
+      {/* Bottom Tabs for Client Role */}
+      {isClientTabRoute && (
+        <IonTabBar>
+          <IonTabButton
+            tab="home"
+            title="Solicitar"
+            icon="emergency"
+            selected={currentRoute === '/cliente/home'}
+            onClick={() => navigateTo('/cliente/home')}
+          />
+          <IonTabButton
+            tab="history"
+            title="Historial"
+            icon="history"
+            selected={currentRoute === '/cliente/history'}
+            onClick={() => navigateTo('/cliente/history')}
+          />
+          <IonTabButton
+            tab="vehicles"
+            title="Vehículos"
+            icon="directions_car"
+            selected={currentRoute === '/cliente/vehicles'}
+            onClick={() => navigateTo('/cliente/vehicles')}
+          />
+          <IonTabButton
+            tab="profile"
+            title="Perfil"
+            icon="person"
+            selected={currentRoute === '/cliente/profile'}
+            onClick={() => navigateTo('/cliente/profile')}
+          />
+        </IonTabBar>
+      )}
+
+      {/* Global Toast */}
+      {toast && toast.isOpen && (
+        <IonToast
+          isOpen={toast.isOpen}
+          message={toast.message}
+          color={toast.color}
+          icon={toast.icon}
+          onDidDismiss={hideToast}
+        />
+      )}
+    </IonApp>
+  );
+};
+
+export default function App() {
+  return (
+    <AppProvider>
+      <MainRouter />
+    </AppProvider>
+  );
+}
