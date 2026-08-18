@@ -39,7 +39,7 @@
     };
 
     const handleNextStatus = () => {
-        if (req.status === 'on_the_way' || req.status === 'accepted' || req.status === 'pending') {
+        if (req.status === 'on_the_way' || req.status === 'accepted') {
         updateServiceStatus('arrived');
         showToast('Estado actualizado: En el lugar del incidente', 'success', 'place');
         } else if (req.status === 'arrived') {
@@ -247,4 +247,4 @@
         </div>
     );
     };
-    }
+    
