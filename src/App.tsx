@@ -22,7 +22,6 @@ import { RegisterMechanicScreen } from './screens/auth/RegisterMechanicScreen';
 import { RegisterAdminScreen } from './screens/auth/RegisterAdminScreen';
 
 
-/*
 // Client Screens
 import { ClientHomeScreen } from './screens/cliente/ClientHomeScreen';
 import { RequestWizardScreen } from './screens/cliente/RequestWizardScreen';
@@ -36,7 +35,6 @@ import { ClientProfileScreen } from './screens/cliente/ClientProfileScreen';
 import { MechanicHomeScreen } from './screens/mecanico/MechanicHomeScreen';
 import { ServiceFlowScreen } from './screens/mecanico/ServiceFlowScreen';
 import { FinalizeServiceScreen } from './screens/mecanico/FinalizeServiceScreen';
-*/
 
 // Admin Screens
 import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen';
@@ -63,7 +61,7 @@ const MainRouter: React.FC = () => {
       case '/auth/register/admin':
         return <RegisterAdminScreen />;
 
-        /*
+        
         case '/cliente/home':
           return <ClientHomeScreen />;
       // Client routes
@@ -87,7 +85,7 @@ const MainRouter: React.FC = () => {
         return <ServiceFlowScreen />;
       case '/mecanico/finalize':
         return <FinalizeServiceScreen />;
-        */
+        
 
       // Admin routes
       case '/admin/dashboard':
