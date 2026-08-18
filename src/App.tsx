@@ -110,7 +110,7 @@ const MainRouter: React.FC = () => {
   return (
     <IonApp>
       {/* Test Role Switcher Banner */}
-      <RoleSwitcherBanner />
+     
 
       {/* Mechanic Incoming Order Modal Listener */}
       <IncomingRequestModal />

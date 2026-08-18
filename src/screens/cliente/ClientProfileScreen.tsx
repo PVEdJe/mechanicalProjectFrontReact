@@ -134,10 +134,17 @@ export const ClientProfileScreen: React.FC = () => {
             Guardar Cambios
           </IonButton>
 
-          <IonButton expand="block" fill="outline" color="danger" size="default" onClick={logout}>
-            <span className="material-symbols-outlined text-base mr-1">logout</span>
-            Cerrar Sesión
-          </IonButton>
+         
+<IonButton 
+  expand="block" 
+  fill="outline" 
+  color="danger" 
+  size="default" 
+  onClick={logout}  // ← Así debe estar
+>
+  <span className="material-symbols-outlined text-base mr-1">logout</span>
+  Cerrar Sesión
+</IonButton>
         </div>
       </IonContent>
     </div>
