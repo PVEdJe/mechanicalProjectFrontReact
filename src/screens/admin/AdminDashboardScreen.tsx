@@ -40,14 +40,20 @@ export const AdminDashboardScreen: React.FC = () => {
               )}
             </button>
 
-            <IonAvatar size="sm" className="border border-slate-200">
-              <AppImage
-                src={currentUser.avatarUrl}
-                alt={currentUser.name}
-                type="avatar"
-                className="w-full h-full object-cover"
-              />
-            </IonAvatar>
+            <div
+              onClick={() => navigateTo('/admin/profile')}
+              className="cursor-pointer active:scale-95 transition-transform"
+              title="Ver Perfil de Administrador"
+            >
+              <IonAvatar size="sm" className="border border-slate-200 hover:border-blue-500">
+                <AppImage
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name}
+                  type="avatar"
+                  className="w-full h-full object-cover"
+                />
+              </IonAvatar>
+            </div>
           </div>
         </IonToolbar>
       </IonHeader>
@@ -78,6 +84,14 @@ export const AdminDashboardScreen: React.FC = () => {
           >
             <span className="material-symbols-outlined text-sm text-emerald-600">map</span>
             Mapa de Flota en Vivo
+          </button>
+
+          <button
+            onClick={() => navigateTo('/admin/profile')}
+            className="px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-50 whitespace-nowrap cursor-pointer shadow-2xs"
+          >
+            <span className="material-symbols-outlined text-sm text-slate-600">admin_panel_settings</span>
+            Perfil Admin
           </button>
         </div>
 
