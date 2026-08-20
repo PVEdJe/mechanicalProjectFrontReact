@@ -133,20 +133,6 @@ const INITIAL_MECHANIC: User = {
     model: 'F-450 Heavy Duty',
     year: 2022,
     plate: 'GR-492-CD',
-    color: 'Amarillo Auxilio / Blanco',
-    vin: '3FDPF47R9NEA19283',
-    capacity: '3.5 Toneladas (Plataforma Hidráulica)',
-    insurancePolicy: 'GNP-V-8819203',
-    insuranceExpiry: 'Noviembre 2026',
-    equipment: [
-      'Winche Hidráulico (8 Ton)',
-      'Compresor de Aire (150 PSI)',
-      'Jumper Booster (12V / 24V)',
-      'Torretas y Estrobos de Emergencia',
-      'Kit de Conos de Señalización Vial',
-    ],
-    imageUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80',
-    verified: true,
   },
   validationStatus: 'approved',
   isOnline: true,
@@ -434,12 +420,12 @@ interface AppContextType {
   completeActiveService: (totalCost: number, rating?: number) => void;
   approveMechanic: (id: string) => void;
   rejectMechanic: (id: string, reason?: string) => void;
+  updateUserProfile: (data: Partial<User>) => void;
+  updateMechanicVehicle: (vehicle: ServiceVehicle) => void;
   addVehicle: (vehicle: Omit<Vehicle, 'id'>) => void;
   setPrimaryVehicle: (id: string) => void;
   deleteVehicle: (id: string) => void;
   removeVehicle: (id: string) => void;
-  // 👇 NUEVA FUNCIÓN AGREGADA
-  updateMechanicVehicle: (vehicle: ServiceVehicle) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -462,7 +448,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     color?: 'primary' | 'success' | 'danger' | 'warning';
     icon?: string;
   } | null>(null);
-
+  /* 
   // Cargar vehículo guardado al iniciar
   useEffect(() => {
     const savedVehicle = localStorage.getItem('mechanicVehicle');
@@ -477,7 +463,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.error('Error al cargar vehículo guardado:', error);
       }
     }
-  }, [currentUser.role]);
+  }, [currentUser.role]);*/
 
   const showToast = (message: string, color: 'primary' | 'success' | 'danger' | 'warning' = 'primary', icon?: string) => {
     setToast({ isOpen: true, message, color, icon });
@@ -645,6 +631,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Solicitud de mecánico rechazada', 'danger', 'block');
   };
 
+  const updateUserProfile = (data: Partial<User>) => {
+    setCurrentUser((prev) => ({
+      ...prev,
+      ...data,
+    }));
+    showToast('Perfil actualizado correctamente', 'success', 'check_circle');
+  };
+
+  const updateMechanicVehicle = (serviceVehicle: ServiceVehicle) => {
+    setCurrentUser((prev) => ({
+      ...prev,
+      serviceVehicle: {
+        ...prev.serviceVehicle,
+        ...serviceVehicle,
+        verified: true,
+      },
+    }));
+    showToast(`Unidad ${serviceVehicle.make} ${serviceVehicle.model} guardada con éxito`, 'success', 'local_shipping');
+  };
+
   const addVehicle = (vehData: Omit<Vehicle, 'id'>) => {
     const newVeh: Vehicle = {
       ...vehData,
@@ -665,7 +671,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setVehicles((prev) => prev.filter((v) => v.id !== id));
     showToast('Vehículo eliminado', 'danger', 'delete');
   };
-
+  /*
   // 👇 NUEVA FUNCIÓN PARA ACTUALIZAR VEHÍCULO DEL MECÁNICO
   const updateMechanicVehicle = (vehicle: ServiceVehicle) => {
     setCurrentUser((prev) => {
@@ -683,7 +689,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem('mechanicVehicle', JSON.stringify(vehicle));
     
     showToast('Unidad de servicio actualizada exitosamente', 'success', 'check_circle');
-  };
+  };*/
 
   return (
     <AppContext.Provider
@@ -720,12 +726,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         completeActiveService,
         approveMechanic,
         rejectMechanic,
+        updateUserProfile,
+        updateMechanicVehicle,
         addVehicle,
         setPrimaryVehicle,
         deleteVehicle,
         removeVehicle: deleteVehicle,
-        // 👇 NUEVA FUNCIÓN AGREGADA AL VALUE
-        updateMechanicVehicle,
       }}
     >
       {children}

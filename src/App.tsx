@@ -31,14 +31,16 @@ import { ClientProfileScreen } from './screens/cliente/ClientProfileScreen';
 
 // Mechanic Screens
 import { MechanicHomeScreen } from './screens/mecanico/MechanicHomeScreen';
-import { ServiceFlowScreen } from './screens/mecanico/ServiceFlowScreen';
+import { MechanicProfileScreen } from './screens/mecanico/MechanicProfileScreen';
 import { MechanicVehicleScreen } from './screens/mecanico/MechanicVehicleScreen';
+import { ServiceFlowScreen } from './screens/mecanico/ServiceFlowScreen';
 import { FinalizeServiceScreen } from './screens/mecanico/FinalizeServiceScreen';
 
 // Admin Screens
 import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen';
 import { MechanicValidationScreen } from './screens/admin/MechanicValidationScreen';
 import { GlobalMapScreen } from './screens/admin/GlobalMapScreen';
+import { AdminProfileScreen } from './screens/admin/AdminProfileScreen';
 
 const MainRouter: React.FC = () => {
   const { currentRoute, currentRole, navigateTo, toast, hideToast } = useApp();
@@ -79,12 +81,14 @@ const MainRouter: React.FC = () => {
       // Mechanic routes
       case '/mecanico/home':
         return <MechanicHomeScreen />;
+      case '/mecanico/vehicle':
+        return <MechanicVehicleScreen />;
+      case '/mecanico/profile':
+        return <MechanicProfileScreen />;
       case '/mecanico/service-flow':
         return <ServiceFlowScreen />;
       case '/mecanico/finalize':
         return <FinalizeServiceScreen />;
-      case '/mecanico/vehicles':
-        return <MechanicVehicleScreen />;
 
       // Admin routes
       case '/admin/dashboard':
@@ -93,6 +97,8 @@ const MainRouter: React.FC = () => {
         return <MechanicValidationScreen />;
       case '/admin/map':
         return <GlobalMapScreen />;
+      case '/admin/profile':
+        return <AdminProfileScreen />;
 
       default:
         return <ClientHomeScreen />;
@@ -109,10 +115,14 @@ const MainRouter: React.FC = () => {
   // Determine if mechanic bottom tab bar should be visible
   const isMechanicTabRoute =
     currentRole === 'mecanico' &&
-    ['/mecanico/home', '/mecanico/vehicles'].includes(currentRoute);
+    ['/mecanico/home', '/mecanico/vehicle', '/mecanico/profile'].includes(
+      currentRoute
+    );
 
   return (
     <IonApp>
+      
+
       {/* Mechanic Incoming Order Modal Listener */}
       <IncomingRequestModal />
 
@@ -158,22 +168,22 @@ const MainRouter: React.FC = () => {
         <IonTabBar>
           <IonTabButton
             tab="home"
-            title="Inicio"
-            icon="home"
+            title="Radar / Inicio"
+            icon="radar"
             selected={currentRoute === '/mecanico/home'}
             onClick={() => navigateTo('/mecanico/home')}
           />
           <IonTabButton
-            tab="vehicles"
-            title="Unidad"
+            tab="vehicle"
+            title="Mi Unidad"
             icon="local_shipping"
-            selected={currentRoute === '/mecanico/vehicles'}
-            onClick={() => navigateTo('/mecanico/vehicles')}
+            selected={currentRoute === '/mecanico/vehicle'}
+            onClick={() => navigateTo('/mecanico/vehicle')}
           />
           <IonTabButton
             tab="profile"
-            title="Perfil"
-            icon="person"
+            title="Mi Perfil"
+            icon="badge"
             selected={currentRoute === '/mecanico/profile'}
             onClick={() => navigateTo('/mecanico/profile')}
           />
