@@ -9,6 +9,7 @@ import {
   CriticalAlert,
   UserRole,
   PendingMechanic,
+  ServiceVehicle,
 } from '../types';
 
 export const ISSUE_OPTIONS: IssueOption[] = [
@@ -132,6 +133,20 @@ const INITIAL_MECHANIC: User = {
     model: 'F-450 Heavy Duty',
     year: 2022,
     plate: 'GR-492-CD',
+    color: 'Amarillo Auxilio / Blanco',
+    vin: '3FDPF47R9NEA19283',
+    capacity: '3.5 Toneladas (Plataforma Hidráulica)',
+    insurancePolicy: 'GNP-V-8819203',
+    insuranceExpiry: 'Noviembre 2026',
+    equipment: [
+      'Winche Hidráulico (8 Ton)',
+      'Compresor de Aire (150 PSI)',
+      'Jumper Booster (12V / 24V)',
+      'Torretas y Estrobos de Emergencia',
+      'Kit de Conos de Señalización Vial',
+    ],
+    imageUrl: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=80',
+    verified: true,
   },
   validationStatus: 'approved',
   isOnline: true,
@@ -423,6 +438,8 @@ interface AppContextType {
   setPrimaryVehicle: (id: string) => void;
   deleteVehicle: (id: string) => void;
   removeVehicle: (id: string) => void;
+  // 👇 NUEVA FUNCIÓN AGREGADA
+  updateMechanicVehicle: (vehicle: ServiceVehicle) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -445,6 +462,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     color?: 'primary' | 'success' | 'danger' | 'warning';
     icon?: string;
   } | null>(null);
+
+  // Cargar vehículo guardado al iniciar
+  useEffect(() => {
+    const savedVehicle = localStorage.getItem('mechanicVehicle');
+    if (savedVehicle && currentUser.role === 'mecanico') {
+      try {
+        const vehicle = JSON.parse(savedVehicle);
+        setCurrentUser((prev) => ({
+          ...prev,
+          serviceVehicle: vehicle
+        }));
+      } catch (error) {
+        console.error('Error al cargar vehículo guardado:', error);
+      }
+    }
+  }, [currentUser.role]);
 
   const showToast = (message: string, color: 'primary' | 'success' | 'danger' | 'warning' = 'primary', icon?: string) => {
     setToast({ isOpen: true, message, color, icon });
@@ -633,6 +666,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     showToast('Vehículo eliminado', 'danger', 'delete');
   };
 
+  // 👇 NUEVA FUNCIÓN PARA ACTUALIZAR VEHÍCULO DEL MECÁNICO
+  const updateMechanicVehicle = (vehicle: ServiceVehicle) => {
+    setCurrentUser((prev) => {
+      // Si el usuario actual es un mecánico, actualiza su serviceVehicle
+      if (prev.role === 'mecanico') {
+        return {
+          ...prev,
+          serviceVehicle: vehicle
+        };
+      }
+      return prev;
+    });
+    
+    // Guardar en localStorage para persistencia
+    localStorage.setItem('mechanicVehicle', JSON.stringify(vehicle));
+    
+    showToast('Unidad de servicio actualizada exitosamente', 'success', 'check_circle');
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -672,6 +724,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setPrimaryVehicle,
         deleteVehicle,
         removeVehicle: deleteVehicle,
+        // 👇 NUEVA FUNCIÓN AGREGADA AL VALUE
+        updateMechanicVehicle,
       }}
     >
       {children}

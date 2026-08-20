@@ -1,3 +1,4 @@
+// screens/auth/LoginScreen.tsx
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -13,6 +14,7 @@ import {
   IonSpinner,
 } from '../../components/ionic/IonicComponents';
 
+// ✅ Asegúrate de que sea export const (no export default)
 export const LoginScreen: React.FC = () => {
   const { navigateTo, loginWithRole } = useApp();
   const [email, setEmail] = useState<string>('salvador.hdz@ejemplo.com');

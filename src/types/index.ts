@@ -40,11 +40,19 @@ export interface Vehicle {
 }
 
 export interface ServiceVehicle {
-  type: string; // e.g. Grúa Plataforma
+  type: string; // e.g. Grúa Plataforma, Taller Móvil, Grúa de Arrastre
   make: string;
-  model: string; // e.g. Ford F-450
+  model: string; // e.g. Ford F-450 Heavy Duty
   year: number;
   plate: string;
+  color?: string;
+  vin?: string;
+  capacity?: string;
+  insurancePolicy?: string;
+  insuranceExpiry?: string;
+  equipment?: string[];
+  imageUrl?: string;
+  verified?: boolean;
 }
 
 export type IssueType =
