@@ -470,12 +470,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        const role = (payload.role || 'cliente').toLowerCase();
-        setCurrentRoleState(role as UserRole);
+        const role = (payload.role || 'cliente').toLowerCase() as UserRole;
+        
+        setCurrentRoleState(role);
+  
+        if (role === 'admin') setCurrentUser(INITIAL_ADMIN);
+        else if (role === 'mecanico') setCurrentUser(INITIAL_MECHANIC);
+        else setCurrentUser(INITIAL_CLIENT);
 
-        if (currentRoute === '/auth/welcome' || currentRoute === '/auth/login') {
-          setCurrentRoute(`/${role}/home`);
-        }
+        setCurrentRoute(role === 'admin' ? '/admin/dashboard' : `/${role}/home`);
+        
       } catch (error) {
         console.error('Error al restaurar sesión:', error);
         localStorage.removeItem('access_token');
