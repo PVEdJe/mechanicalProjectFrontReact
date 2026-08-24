@@ -16,9 +16,9 @@ import {
 export const RegisterAdminScreen: React.FC = () => {
   const { navigateTo, loginWithRole, showToast } = useApp();
   const [formData, setFormData] = useState({
-    name: 'Valeria Ríos',
-    email: 'admin@autorescate.mx',
-    password: 'AdminMaster2026!',
+    name: '',
+    email: '',
+    password: '',
     authCode: 'AUTORESCATE-OPS-2026',
   });
   const [isLoading, setIsLoading] = useState(false);

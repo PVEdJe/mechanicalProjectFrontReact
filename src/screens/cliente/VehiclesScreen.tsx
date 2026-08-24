@@ -1,50 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AppImage } from '../../components/shared/AppImage';
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonBackButton,
-  IonContent,
-  IonCard,
-  IonCardContent,
-  IonButton,
-  IonModal,
-  IonInput,
+  IonHeader, IonToolbar, IonTitle, IonBackButton, IonContent,
+  IonCard, IonCardContent, IonButton, IonModal, IonInput,
 } from '../../components/ionic/IonicComponents';
 
 export const VehiclesScreen: React.FC = () => {
-  const { vehicles, setPrimaryVehicle, addVehicle, removeVehicle, navigateTo, showToast } = useApp();
+  const { navigateTo, showToast } = useApp();
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    make: '',
-    model: '',
-    year: '2024',
-    color: '',
-    plate: '',
-  });
+  const [vehiculos, setVehiculos] = useState<any[]>([]); 
+  const [formData, setFormData] = useState({ make: '', model: '', year: '', color: '', plate: '' });
 
-  const handleAdd = (e: React.FormEvent) => {
+  const cargarVehiculos = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+
+      const res = await fetch(`http://localhost:3000/vehiculos/usuario/${payload.sub}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVehiculos(data);
+      }
+    } catch (error) {
+      console.error('Error al cargar vehículos', error);
+    }
+  };
+
+  useEffect(() => {
+    cargarVehiculos();
+  }, []);
+
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.make || !formData.model || !formData.plate) {
       showToast('Por favor completa todos los campos requeridos', 'warning');
       return;
     }
 
-    addVehicle({
-      make: formData.make,
-      model: formData.model,
-      year: parseInt(formData.year) || 2024,
-      color: formData.color || 'Color estándar',
-      plate: formData.plate,
-      imageUrl: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800&auto=format&fit=crop&q=60',
-      isPrimary: vehicles.length === 0,
-    });
+    try {
+      const token = localStorage.getItem('access_token');
+      const payload = JSON.parse(atob(token!.split('.')[1]));
 
-    setFormData({ make: '', model: '', year: '2024', color: '', plate: '' });
-    setAddModalOpen(false);
-    showToast('Vehículo agregado exitosamente', 'success', 'check_circle');
+      const res = await fetch('http://localhost:3000/vehiculos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          marca: formData.make,
+          modelo: formData.model,
+          anio: parseInt(formData.year) || 2024,
+          color: formData.color,
+          placas: formData.plate,
+          userId: payload.sub 
+        })
+      });
+
+      if (res.ok) {
+        showToast('Vehículo agregado exitosamente', 'success', 'check_circle');
+        setAddModalOpen(false);
+        setFormData({ make: '', model: '', year: '', color: '', plate: '' });
+        cargarVehiculos(); 
+      } else {
+        showToast('Error al guardar el vehículo', 'danger');
+      }
+    } catch (error) {
+      showToast('Error de conexión', 'danger');
+    }
   };
 
   return (
@@ -72,64 +99,34 @@ export const VehiclesScreen: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {vehicles.map((v) => (
-            <IonCard key={v.id} className={v.isPrimary ? 'border-blue-600 ring-1 ring-blue-600/30' : ''}>
+          {vehiculos.length === 0 && (
+            <p className="text-xs text-slate-500 text-center py-8">No tienes vehículos registrados aún.</p>
+          )}
+          {vehiculos.map((v) => (
+            <IonCard key={v.id} className={v.esPrincipal ? 'border-blue-600 ring-1 ring-blue-600/30' : ''}>
               <IonCardContent className="p-4">
                 <div className="flex gap-3.5 items-center">
                   <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 overflow-hidden relative border border-slate-200">
-                    <AppImage
-                      src={v.imageUrl}
-                      alt={`${v.make} ${v.model}`}
-                      type="vehicle"
-                      className="w-full h-full object-cover"
-                    />
+                    <span className="material-symbols-outlined text-3xl">directions_car</span>
                   </div>
-
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-sm text-slate-900 truncate">
-                        {v.make} {v.model}
+                        {v.marca} {v.modelo}
                       </h3>
-                      {v.isPrimary && (
+                      {v.esPrincipal && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                           Principal
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Año {v.year} • {v.color}
+                      Año {v.anio} • {v.color}
                     </p>
                     <p className="text-xs font-mono font-bold text-slate-700 mt-1 bg-slate-100 inline-block px-2 py-0.5 rounded border border-slate-200">
-                      {v.plate}
+                      {v.placas}
                     </p>
                   </div>
-                </div>
-
-                <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  {!v.isPrimary ? (
-                    <button
-                      onClick={() => setPrimaryVehicle(v.id)}
-                      className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-sm">check_circle</span>
-                      Establecer como principal
-                    </button>
-                  ) : (
-                    <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">verified</span>
-                      Activo para solicitudes
-                    </span>
-                  )}
-
-                  {vehicles.length > 1 && (
-                    <button
-                      onClick={() => removeVehicle(v.id)}
-                      className="text-xs text-red-600 hover:text-red-700 p-1 cursor-pointer"
-                      title="Eliminar vehículo"
-                    >
-                      <span className="material-symbols-outlined text-lg">delete</span>
-                    </button>
-                  )}
                 </div>
               </IonCardContent>
             </IonCard>
@@ -137,55 +134,16 @@ export const VehiclesScreen: React.FC = () => {
         </div>
       </IonContent>
 
-      {/* Add Vehicle Modal */}
-      <IonModal
-        isOpen={addModalOpen}
-        onDidDismiss={() => setAddModalOpen(false)}
-        title="Registrar Nuevo Vehículo"
-      >
+      <IonModal isOpen={addModalOpen} onDidDismiss={() => setAddModalOpen(false)} title="Registrar Nuevo Vehículo">
         <form onSubmit={handleAdd} className="space-y-4">
-          <IonInput
-            label="Marca"
-            placeholder="Ej. Nissan, Toyota, Honda"
-            value={formData.make}
-            onIonChange={(v) => setFormData({ ...formData, make: v })}
-            required
-          />
-          <IonInput
-            label="Modelo"
-            placeholder="Ej. Versa, Corolla, Civic"
-            value={formData.model}
-            onIonChange={(v) => setFormData({ ...formData, model: v })}
-            required
-          />
+          <IonInput label="Marca" placeholder="Ej. Nissan, Toyota" value={formData.make} onIonChange={(v) => setFormData({ ...formData, make: v as string })} required />
+          <IonInput label="Modelo" placeholder="Ej. Versa, Corolla" value={formData.model} onIonChange={(v) => setFormData({ ...formData, model: v as string })} required />
           <div className="grid grid-cols-2 gap-3">
-            <IonInput
-              label="Año"
-              type="number"
-              placeholder="2024"
-              value={formData.year}
-              onIonChange={(v) => setFormData({ ...formData, year: v })}
-              required
-            />
-            <IonInput
-              label="Color"
-              placeholder="Ej. Gris Plata"
-              value={formData.color}
-              onIonChange={(v) => setFormData({ ...formData, color: v })}
-              required
-            />
+            <IonInput label="Año" type="number" placeholder="2024" value={formData.year} onIonChange={(v) => setFormData({ ...formData, year: v as string })} required />
+            <IonInput label="Color" placeholder="Ej. Gris Plata" value={formData.color} onIonChange={(v) => setFormData({ ...formData, color: v as string })} required />
           </div>
-          <IonInput
-            label="Placas"
-            placeholder="Ej. NXM-9201"
-            value={formData.plate}
-            onIonChange={(v) => setFormData({ ...formData, plate: v })}
-            required
-          />
-
-          <IonButton type="submit" expand="block" size="large" className="mt-4">
-            Guardar Vehículo
-          </IonButton>
+          <IonInput label="Placas" placeholder="Ej. NXM-9201" value={formData.plate} onIonChange={(v) => setFormData({ ...formData, plate: v as string })} required />
+          <IonButton type="submit" expand="block" size="large" className="mt-4">Guardar Vehículo</IonButton>
         </form>
       </IonModal>
     </div>

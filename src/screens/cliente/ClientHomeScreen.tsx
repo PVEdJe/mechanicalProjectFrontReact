@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InteractiveMap } from '../../components/shared/InteractiveMap';
 import { AppImage } from '../../components/shared/AppImage';
@@ -12,29 +12,74 @@ import {
 } from '../../components/ionic/IonicComponents';
 
 export const ClientHomeScreen: React.FC = () => {
-  const { currentUser, vehicles, setPrimaryVehicle, navigateTo, createAssistanceRequest } = useApp();
+  const { currentUser, navigateTo, createAssistanceRequest, showToast } = useApp();
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
+  
+  // Estados reales de la base de datos
+  const [vehiculos, setVehiculos] = useState<any[]>([]);
+  const [activeVehicle, setActiveVehicle] = useState<any>(null);
 
-  const activeVehicle = vehicles.find((v) => v.isPrimary) || vehicles[0] || {
-    id: 'v-1',
-    make: 'Tesla',
-    model: 'Model 3',
-    color: 'Blanco',
-    plate: 'ABC-1234',
+  // Cargar vehículos desde MySQL (NestJS)
+  const cargarVehiculos = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+      
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const res = await fetch(`http://localhost:3000/vehiculos/usuario/${payload.sub}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        setVehiculos(data);
+        // Seleccionamos el principal o el primero de la lista
+        const principal = data.find((v: any) => v.esPrincipal) || data[0];
+        setActiveVehicle(principal || null);
+      }
+    } catch (error) {
+      console.error('Error al cargar vehículos:', error);
+    }
+  };
+
+  useEffect(() => {
+    cargarVehiculos();
+  }, []);
+
+  // Cambiar vehículo principal en la BD
+  const handleSetPrincipal = async (id: string) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`http://localhost:3000/vehiculos/${id}/principal`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        cargarVehiculos(); // Recargar la lista para ver el cambio
+        setVehicleModalOpen(false);
+        showToast('Vehículo activo actualizado', 'success', 'directions_car');
+      }
+    } catch (error) {
+      showToast('Error al cambiar vehículo', 'danger');
+    }
   };
 
   const handleQuickRequest = (issueType: 'battery' | 'tire') => {
+    if (!activeVehicle) {
+      showToast('Debes registrar un vehículo primero', 'warning');
+      return;
+    }
     createAssistanceRequest({
       issue: issueType,
       issueTitle: issueType === 'battery' ? 'Batería descargada' : 'Llanta ponchada',
       vehicle: activeVehicle,
-      description: `Asistencia rápida para ${activeVehicle.make} ${activeVehicle.model}`,
+      description: `Asistencia rápida para ${activeVehicle.marca} ${activeVehicle.modelo}`,
     });
   };
 
   return (
     <div className="relative w-full h-screen overflow-hidden flex flex-col bg-slate-50">
-      {/* Top App Bar */}
       <IonHeader className="absolute top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <IonToolbar>
           <div className="flex items-center gap-2.5">
@@ -48,10 +93,8 @@ export const ClientHomeScreen: React.FC = () => {
             <button
               onClick={() => navigateTo('/cliente/history')}
               className="relative p-2 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:scale-95 transition-all cursor-pointer"
-              title="Historial de solicitudes"
             >
               <span className="material-symbols-outlined text-2xl">notifications</span>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white" />
             </button>
 
             <button
@@ -61,7 +104,7 @@ export const ClientHomeScreen: React.FC = () => {
               <IonAvatar size="sm" className="border border-slate-200">
                 <AppImage
                   src={currentUser.avatarUrl}
-                  alt={currentUser.name}
+                  alt="Perfil"
                   type="avatar"
                   className="w-full h-full object-cover"
                 />
@@ -71,11 +114,10 @@ export const ClientHomeScreen: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      {/* Fullscreen Interactive Map */}
       <div className="flex-1 w-full h-full relative">
         <InteractiveMap showRoute={false} />
 
-        {/* Floating Quick Access: Active Vehicle Badge */}
+        {/* Badge Flotante del Vehículo Activo Real */}
         <div className="absolute top-16 left-4 right-4 z-30 max-w-md mx-auto">
           <div className="bg-white/90 backdrop-blur-md rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3">
             <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-700 shrink-0">
@@ -85,43 +127,42 @@ export const ClientHomeScreen: React.FC = () => {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
                 Vehículo Activo
               </p>
-              <p className="text-sm font-bold text-slate-900 truncate">
-                {activeVehicle.make} {activeVehicle.model} ({activeVehicle.color})
-              </p>
+              {activeVehicle ? (
+                <p className="text-sm font-bold text-slate-900 truncate">
+                  {activeVehicle.marca} {activeVehicle.modelo} ({activeVehicle.color})
+                </p>
+              ) : (
+                <p className="text-sm font-bold text-red-500 truncate">
+                  Sin vehículo registrado
+                </p>
+              )}
             </div>
             <button
               onClick={() => setVehicleModalOpen(true)}
               className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
-              title="Cambiar vehículo"
             >
               <span className="material-symbols-outlined text-xl">swap_horiz</span>
             </button>
           </div>
         </div>
 
-        {/* Bottom Request Area Card */}
+        {/* Panel Inferior */}
         <div className="absolute bottom-16 left-0 right-0 z-30 px-4 pb-4 max-w-md mx-auto">
           <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-200 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] p-5 flex flex-col gap-3">
             <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-1" />
-
             <div className="text-center">
               <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">Auxilio Vial Inmediato</span>
               <h2 className="text-lg font-bold text-slate-900 mt-0.5">¿Necesitas asistencia?</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                4 unidades de auxilio vial activas en tu zona.
-              </p>
             </div>
 
-            {/* Primary Action Button */}
             <button
-              onClick={() => navigateTo('/cliente/request')}
+              onClick={() => activeVehicle ? navigateTo('/cliente/request') : showToast('Registra un vehículo primero', 'warning')}
               className="w-full h-12 bg-blue-600 text-white font-bold text-xs md:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-200 hover:bg-blue-700 active:scale-[0.98] transition-all cursor-pointer uppercase tracking-wider"
             >
               <span className="material-symbols-outlined text-xl">car_repair</span>
               SOLICITAR AUXILIO VIAL
             </button>
 
-            {/* Secondary Quick Action Buttons */}
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => handleQuickRequest('battery')}
@@ -130,7 +171,6 @@ export const ClientHomeScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-yellow-600 text-base">battery_alert</span>
                 Sin Batería
               </button>
-
               <button
                 onClick={() => handleQuickRequest('tire')}
                 className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:scale-95 transition-all text-xs font-semibold text-slate-800 shadow-2xs cursor-pointer"
@@ -143,26 +183,21 @@ export const ClientHomeScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Vehicle Selection Modal */}
-      <IonModal
-        isOpen={vehicleModalOpen}
-        onDidDismiss={() => setVehicleModalOpen(false)}
-        title="Seleccionar Vehículo Activo"
-      >
+      {/* Modal Real de Selección de Vehículo */}
+      <IonModal isOpen={vehicleModalOpen} onDidDismiss={() => setVehicleModalOpen(false)} title="Seleccionar Vehículo Activo">
         <div className="space-y-3">
-          {vehicles.map((v) => {
-            const isSelected = v.id === activeVehicle.id;
+          {vehiculos.length === 0 && (
+            <p className="text-center text-xs text-slate-500 py-4">No tienes vehículos registrados.</p>
+          )}
+          
+          {vehiculos.map((v) => {
+            const isSelected = activeVehicle && v.id === activeVehicle.id;
             return (
               <div
                 key={v.id}
-                onClick={() => {
-                  setPrimaryVehicle(v.id);
-                  setVehicleModalOpen(false);
-                }}
+                onClick={() => handleSetPrincipal(v.id)}
                 className={`p-3.5 rounded-2xl border flex items-center gap-3 cursor-pointer transition-all ${
-                  isSelected
-                    ? 'border-blue-600 bg-blue-50/60'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                  isSelected ? 'border-blue-600 bg-blue-50/60' : 'border-slate-200 bg-white hover:border-slate-300'
                 }`}
               >
                 <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
@@ -170,10 +205,10 @@ export const ClientHomeScreen: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold text-sm text-slate-900">
-                    {v.make} {v.model} ({v.year})
+                    {v.marca} {v.modelo} ({v.anio})
                   </h4>
                   <p className="text-xs text-slate-500">
-                    {v.color} • Placas: {v.plate}
+                    {v.color} • Placas: {v.placas}
                   </p>
                 </div>
                 {isSelected && (
@@ -184,8 +219,7 @@ export const ClientHomeScreen: React.FC = () => {
           })}
 
           <IonButton
-            expand="block"
-            fill="outline"
+            expand="block" fill="outline"
             onClick={() => {
               setVehicleModalOpen(false);
               navigateTo('/cliente/vehicles');
