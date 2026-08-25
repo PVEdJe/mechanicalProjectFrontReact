@@ -101,7 +101,7 @@ const MainRouter: React.FC = () => {
         return <AdminProfileScreen />;
 
       default:
-        return <ClientHomeScreen />;
+        return <WelcomeScreen />;
     }
   };
 

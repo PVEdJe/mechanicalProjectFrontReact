@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { PendingMechanic } from '../../types';
 import { AppImage } from '../../components/shared/AppImage';
 import {
   IonHeader,
@@ -15,23 +14,56 @@ import {
 } from '../../components/ionic/IonicComponents';
 
 export const MechanicValidationScreen: React.FC = () => {
-  const { pendingMechanics, approveMechanic, rejectMechanic, navigateTo } = useApp();
-  const [selectedMechanic, setSelectedMechanic] = useState<PendingMechanic | null>(null);
+  const { navigateTo, showToast } = useApp();
+  
+  const [mechanics, setMechanics] = useState<any[]>([]);
+  const [selectedMechanic, setSelectedMechanic] = useState<any | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
-  const filtered = pendingMechanics.filter((m) => {
-    if (filter === 'all') return true;
-    return m.status === filter;
-  });
-
-  const handleApprove = (id: string) => {
-    approveMechanic(id);
-    setSelectedMechanic(null);
+  const cargarMecanicos = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('http://localhost:3000/users/mecanicos/lista', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMechanics(data);
+      }
+    } catch (error) {
+      console.error('Error al cargar mecánicos:', error);
+    }
   };
 
-  const handleReject = (id: string) => {
-    rejectMechanic(id, 'Documentación de póliza ilegible');
-    setSelectedMechanic(null);
+  useEffect(() => {
+    cargarMecanicos();
+  }, []);
+
+  const filtered = mechanics.filter((m) => {
+    if (filter === 'all') return true;
+    return (m.validationStatus || 'pending') === filter;
+  });
+
+  const actualizarEstado = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`http://localhost:3000/users/${id}/validar`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ validationStatus: status })
+      });
+
+      if (res.ok) {
+        showToast(`Expediente ${status === 'approved' ? 'aprobado' : 'rechazado'} con éxito`, status === 'approved' ? 'success' : 'danger', 'verified_user');
+        setSelectedMechanic(null);
+        cargarMecanicos(); 
+      }
+    } catch (error) {
+      showToast('Error al actualizar el expediente', 'danger');
+    }
   };
 
   return (
@@ -64,157 +96,145 @@ export const MechanicValidationScreen: React.FC = () => {
                     : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                {f === 'all'
-                  ? 'Todos'
-                  : f === 'pending'
-                  ? 'Pendientes'
-                  : f === 'approved'
-                  ? 'Aprobados'
-                  : 'Rechazados'}
+                {f === 'all' ? 'Todos' : f === 'pending' ? 'Pendientes' : f === 'approved' ? 'Aprobados' : 'Rechazados'}
               </button>
             ))}
           </div>
         </div>
 
-        {/* List of applications */}
+        {/* Lista de expedientes reales */}
         <div className="space-y-3">
-          {filtered.map((mech) => (
-            <IonCard key={mech.id} className="hover:border-slate-300 transition-all shadow-2xs">
-              <IonCardContent className="p-4">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs shrink-0">
-                      <AppImage
-                        src={mech.avatarUrl}
-                        alt={mech.name}
-                        type="mechanic"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-sm text-slate-900">{mech.name}</h3>
-                        <IonBadge
-                          color={
-                            mech.status === 'pending'
-                              ? 'warning'
-                              : mech.status === 'approved'
-                              ? 'success'
-                              : 'danger'
-                          }
-                        >
-                          {mech.status === 'pending'
-                            ? 'Pendiente'
-                            : mech.status === 'approved'
-                            ? 'Aprobado'
-                            : 'Rechazado'}
-                        </IonBadge>
+          {filtered.length === 0 && (
+            <p className="text-center text-xs text-slate-500 py-10">No se encontraron expedientes en esta categoría.</p>
+          )}
+          {filtered.map((mech) => {
+            const currentStatus = mech.validationStatus || 'pending';
+            // Extraemos el primer vehículo si existe
+            const vehiculo = mech.vehiculo && mech.vehiculo.length > 0 ? mech.vehiculo[0] : null;
+            const specialtiesArray = mech.especialidades ? mech.especialidades.split(',') : ['Mecánica General'];
+
+            return (
+              <IonCard key={mech.id} className="hover:border-slate-300 transition-all shadow-2xs">
+                <IonCardContent className="p-4">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs shrink-0 flex items-center justify-center">
+                        {mech.avatarUrl ? (
+                           <AppImage src={mech.avatarUrl} alt={mech.firstName} type="mechanic" className="w-full h-full object-cover" />
+                        ) : (
+                           <span className="material-symbols-outlined text-3xl text-slate-400">person</span>
+                        )}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {mech.email} • {mech.phone}
-                      </p>
-                      <p className="text-xs font-semibold text-slate-700 mt-1">
-                        Unidad: {mech.serviceVehicle.type} ({mech.serviceVehicle.make} {mech.serviceVehicle.model} •{' '}
-                        {mech.serviceVehicle.plate})
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-sm text-slate-900">{mech.firstName} {mech.lastName}</h3>
+                          <IonBadge color={currentStatus === 'pending' ? 'warning' : currentStatus === 'approved' ? 'success' : 'danger'}>
+                            {currentStatus === 'pending' ? 'Pendiente' : currentStatus === 'approved' ? 'Aprobado' : 'Rechazado'}
+                          </IonBadge>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {mech.email} • {mech.phone}
+                        </p>
+                        {vehiculo ? (
+                          <p className="text-xs font-semibold text-slate-700 mt-1">
+                            Unidad: {vehiculo.marca} {vehiculo.modelo} ({vehiculo.anio}) • {vehiculo.placas}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-red-500 mt-1">Sin unidad registrada</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                      <button
+                        onClick={() => setSelectedMechanic({ ...mech, currentStatus, vehiculo, specialtiesArray })}
+                        className="px-3.5 py-1.5 bg-slate-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer"
+                      >
+                        Ver Expediente
+                      </button>
+
+                      {currentStatus === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => actualizarEstado(mech.id, 'approved')}
+                            className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                          >
+                            Aprobar
+                          </button>
+                          <button
+                            onClick={() => actualizarEstado(mech.id, 'rejected')}
+                            className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-semibold hover:bg-red-100 active:scale-95 transition-all cursor-pointer"
+                          >
+                            Rechazar
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                    <button
-                      onClick={() => setSelectedMechanic(mech)}
-                      className="px-3.5 py-1.5 bg-slate-50 text-blue-600 rounded-xl text-xs font-semibold hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer"
-                    >
-                      Ver Expediente
-                    </button>
-
-                    {mech.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleApprove(mech.id)}
-                          className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 active:scale-95 transition-all shadow-2xs cursor-pointer"
-                        >
-                          Aprobar
-                        </button>
-                        <button
-                          onClick={() => handleReject(mech.id)}
-                          className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-semibold hover:bg-red-100 active:scale-95 transition-all cursor-pointer"
-                        >
-                          Rechazar
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Specialties chips */}
-                <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
-                  {mech.specialties.map((s, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-50 text-slate-600 border border-slate-200"
-                    >
-                      {s}
+                  <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
+                    {specialtiesArray.map((s: string, idx: number) => (
+                      <span key={idx} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-50 text-slate-600 border border-slate-200">
+                        {s.trim()}
+                      </span>
+                    ))}
+                    <span className="text-[10px] text-slate-400 ml-auto">
+                      {mech.experiencia || 0} años exp
                     </span>
-                  ))}
-                  <span className="text-[10px] text-slate-400 ml-auto">
-                    {mech.experienceYears} años exp • {mech.submittedDate}
-                  </span>
-                </div>
-              </IonCardContent>
-            </IonCard>
-          ))}
+                  </div>
+                </IonCardContent>
+              </IonCard>
+            );
+          })}
         </div>
       </IonContent>
 
-      {/* Detailed Mechanic Inspector Modal */}
-      <IonModal
-        isOpen={!!selectedMechanic}
-        onDidDismiss={() => setSelectedMechanic(null)}
-        title="Expediente de Técnico"
-      >
+      {/* Modal del Expediente (Mapeo de Documentos Reales) */}
+      <IonModal isOpen={!!selectedMechanic} onDidDismiss={() => setSelectedMechanic(null)} title="Expediente de Técnico">
         {selectedMechanic && (
           <div className="space-y-4 text-xs">
-            {/* Header info */}
             <div className="flex items-center gap-3.5 pb-3 border-b border-slate-100">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200">
-                <AppImage
-                  src={selectedMechanic.avatarUrl}
-                  alt={selectedMechanic.name}
-                  type="mechanic"
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-14 h-14 rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+                {selectedMechanic.avatarUrl ? (
+                    <AppImage src={selectedMechanic.avatarUrl} alt={selectedMechanic.firstName} type="mechanic" className="w-full h-full object-cover" />
+                ) : (
+                    <span className="material-symbols-outlined text-3xl text-slate-400">person</span>
+                )}
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">{selectedMechanic.name}</h3>
+                <h3 className="text-sm font-bold text-slate-900">{selectedMechanic.firstName} {selectedMechanic.lastName}</h3>
                 <p className="text-slate-500">{selectedMechanic.email} • {selectedMechanic.phone}</p>
                 <p className="text-[11px] text-blue-600 font-semibold mt-0.5">
-                  Experiencia: {selectedMechanic.experienceYears} años
+                  Experiencia: {selectedMechanic.experiencia || 0} años
                 </p>
               </div>
             </div>
 
-            {/* Service unit */}
             <div>
               <h4 className="font-bold text-slate-400 uppercase text-[10px] tracking-widest mb-1.5">Unidad de Auxilio</h4>
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-0.5">
-                <p className="font-bold text-slate-900">{selectedMechanic.serviceVehicle.type}</p>
-                <p className="text-slate-500">
-                  {selectedMechanic.serviceVehicle.make} {selectedMechanic.serviceVehicle.model} ({selectedMechanic.serviceVehicle.year}) • Placas: {selectedMechanic.serviceVehicle.plate}
-                </p>
-              </div>
+              {selectedMechanic.vehiculo ? (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-0.5">
+                  <p className="font-bold text-slate-900">{selectedMechanic.vehiculo.marca} {selectedMechanic.vehiculo.modelo}</p>
+                  <p className="text-slate-500">
+                    Año: {selectedMechanic.vehiculo.anio} • Color: {selectedMechanic.vehiculo.color} • Placas: {selectedMechanic.vehiculo.placas}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-red-50 p-3 rounded-xl border border-red-200 text-red-600 font-semibold">
+                  El técnico aún no registra una unidad de servicio.
+                </div>
+              )}
             </div>
 
-            {/* Documents checklist */}
             <div>
               <h4 className="font-bold text-slate-400 uppercase text-[10px] tracking-widest mb-1.5">Documentación</h4>
               <div className="space-y-2">
-                {selectedMechanic.documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between"
-                  >
+                {[
+                  { title: 'Identificación Oficial (INE)', verificado: selectedMechanic.identificacionOficial },
+                  { title: 'Licencia de Conducir Especial', verificado: selectedMechanic.licenciaEspecial },
+                  { title: 'Póliza de Seguro Vigente', verificado: selectedMechanic.polizaSeguro }
+                ].map((doc, idx) => (
+                  <div key={idx} className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-base text-blue-600">description</span>
                       <div>
@@ -222,25 +242,24 @@ export const MechanicValidationScreen: React.FC = () => {
                         <p className="text-[10px] text-slate-400">Verificado digitalmente</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                      {doc.verified ? 'Verificado' : 'Revisar'}
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${doc.verificado ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-red-700 bg-red-50 border-red-200'}`}>
+                      {doc.verificado ? 'Verificado' : 'Faltante'}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Modal actions */}
-            {selectedMechanic.status === 'pending' && (
+            {selectedMechanic.currentStatus === 'pending' && (
               <div className="grid grid-cols-2 gap-2.5 pt-2">
                 <button
-                  onClick={() => handleReject(selectedMechanic.id)}
+                  onClick={() => actualizarEstado(selectedMechanic.id, 'rejected')}
                   className="py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-100 cursor-pointer"
                 >
                   Rechazar
                 </button>
                 <button
-                  onClick={() => handleApprove(selectedMechanic.id)}
+                  onClick={() => actualizarEstado(selectedMechanic.id, 'approved')}
                   className="py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 cursor-pointer"
                 >
                   Aprobar

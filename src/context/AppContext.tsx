@@ -433,7 +433,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentRole, setCurrentRoleState] = useState<UserRole>('cliente');
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_CLIENT);
-  const [currentRoute, setCurrentRoute] = useState<string>('/cliente/home');
+  const [currentRoute, setCurrentRoute] = useState<string>('/auth/welcome');
   const [activeRequest, setActiveRequest] = useState<ServiceRequest | null>(INITIAL_ACTIVE_REQUEST);
   const [history, setHistory] = useState<ServiceRequest[]>(INITIAL_HISTORY);
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
@@ -464,6 +464,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
   }, [currentUser.role]);*/
+  
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const role = (payload.role || 'cliente').toLowerCase() as UserRole;
+        
+        setCurrentRoleState(role);
+  
+        if (role === 'admin') setCurrentUser(INITIAL_ADMIN);
+        else if (role === 'mecanico') setCurrentUser(INITIAL_MECHANIC);
+        else setCurrentUser(INITIAL_CLIENT);
+
+        setCurrentRoute(role === 'admin' ? '/admin/dashboard' : `/${role}/home`);
+        
+      } catch (error) {
+        console.error('Error al restaurar sesión:', error);
+        localStorage.removeItem('access_token');
+      }
+    }
+  }, []);
 
   const showToast = (message: string, color: 'primary' | 'success' | 'danger' | 'warning' = 'primary', icon?: string) => {
     setToast({ isOpen: true, message, color, icon });
@@ -497,6 +519,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const logout = () => {
+    localStorage.removeItem('access_token');
     setCurrentRoute('/auth/welcome');
     showToast('Sesión cerrada correctamente', 'primary', 'logout');
   };

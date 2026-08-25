@@ -16,27 +16,63 @@ import {
 export const RegisterAdminScreen: React.FC = () => {
   const { navigateTo, loginWithRole, showToast } = useApp();
   const [formData, setFormData] = useState({
-    name: 'Valeria Ríos',
-    email: 'admin@autorescate.mx',
-    password: 'AdminMaster2026!',
-    authCode: 'AUTORESCATE-OPS-2026',
+    name: '',
+    email: '',
+    password: '',
+    authCode: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.authCode.toUpperCase().includes('RESCATE') && !formData.authCode.toUpperCase().includes('OPS')) {
-      setErrorMsg('Código de autorización inválido. Consulta con el área de operaciones.');
-      return;
-    }
-
+    setErrorMsg('');
     setIsLoading(true);
-    setTimeout(() => {
+
+    try {
+      const nameParts = formData.name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || 'Admin';
+
+      const res = await fetch('http://localhost:3000/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email: formData.email,
+          password: formData.password,
+          phone: '+52 55 9000 1122', 
+          role: 'ADMIN',
+          authCode: formData.authCode,
+        })
+      });
+
+      if (res.ok) {
+        const loginRes = await fetch('http://localhost:3000/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password
+          })
+        });
+
+        if (loginRes.ok) {
+          const data = await loginRes.json();
+          localStorage.setItem('access_token', data.access_token); 
+          showToast('Acceso administrativo autorizado', 'success', 'verified_user');
+          loginWithRole('admin'); 
+        }
+      } else {
+        const errData = await res.json();
+        setErrorMsg(errData.message || 'Código inválido o el usuario ya existe.');
+      }
+    } catch (error) {
+      setErrorMsg('Error de conexión con la Torre de Control.');
+    } finally {
       setIsLoading(false);
-      showToast('Acceso administrativo autorizado', 'success', 'verified_user');
-      loginWithRole('admin');
-    }, 1000);
+    }
   };
 
   return (
@@ -73,7 +109,7 @@ export const RegisterAdminScreen: React.FC = () => {
                 label="Nombre del Operador"
                 placeholder="Valeria Ríos"
                 value={formData.name}
-                onIonChange={(v) => setFormData({ ...formData, name: v })}
+                onIonChange={(v) => setFormData({ ...formData, name: v as string })}
                 required
               />
 
@@ -82,7 +118,7 @@ export const RegisterAdminScreen: React.FC = () => {
                 type="email"
                 placeholder="operaciones@autorescate.mx"
                 value={formData.email}
-                onIonChange={(v) => setFormData({ ...formData, email: v })}
+                onIonChange={(v) => setFormData({ ...formData, email: v as string })}
                 required
               />
 
@@ -91,7 +127,7 @@ export const RegisterAdminScreen: React.FC = () => {
                 type="password"
                 placeholder="••••••••"
                 value={formData.password}
-                onIonChange={(v) => setFormData({ ...formData, password: v })}
+                onIonChange={(v) => setFormData({ ...formData, password: v as string })}
                 required
               />
 
@@ -100,7 +136,7 @@ export const RegisterAdminScreen: React.FC = () => {
                   label="Código Institucional"
                   placeholder="AUTORESCATE-OPS-2026"
                   value={formData.authCode}
-                  onIonChange={(v) => setFormData({ ...formData, authCode: v })}
+                  onIonChange={(v) => setFormData({ ...formData, authCode: v as string })}
                   required
                 />
                 <p className="text-[10px] text-slate-400 mt-1">

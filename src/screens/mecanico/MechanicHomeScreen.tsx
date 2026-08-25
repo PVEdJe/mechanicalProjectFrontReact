@@ -1,97 +1,188 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InteractiveMap } from '../../components/shared/InteractiveMap';
 import { AppImage } from '../../components/shared/AppImage';
 import {
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonAvatar,
-  IonToggle,
-  IonCard,
-  IonCardContent,
+  IonHeader, IonToolbar, IonTitle, IonAvatar, IonToggle,
   IonButton,
-  IonBadge,
 } from '../../components/ionic/IonicComponents';
 
 export const MechanicHomeScreen: React.FC = () => {
   const {
-    currentUser,
     isMechanicOnline,
     setIsMechanicOnline,
-    activeRequest,
     navigateTo,
     setIncomingOrderModal,
+    incomingOrderModal,
+    showToast
   } = useApp();
+
+  // Estados reales de la base de datos
+  const [mechanicData, setMechanicData] = useState({
+    firstName: 'Cargando...',
+    lastName: '',
+    avatarUrl: '',
+    rating: 5.0
+  });
+  const [vehicleData, setVehicleData] = useState({
+    marca: '',
+    modelo: '',
+    placas: ''
+  });
+
+  const [activeRescue, setActiveRescue] = useState<any>(null); 
+  const [stats, setStats] = useState({ ganancias: 0, servicios: 0 });
+  const [historial, setHistorial] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+        const payload = JSON.parse(atob(token.split('.')[1])); 
+
+        const userRes = await fetch(`http://localhost:3000/users/${payload.sub}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setMechanicData({
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            avatarUrl: userData.avatarUrl || '',
+            rating: 5.0 
+          });
+        }
+
+        const vehRes = await fetch(`http://localhost:3000/vehiculos/usuario/${payload.sub}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (vehRes.ok) {
+          const vehData = await vehRes.json();
+          if (vehData.length > 0) {
+            setVehicleData({
+              marca: vehData[0].marca || 'Sin vehículo',
+              modelo: vehData[0].modelo || '',
+              placas: vehData[0].placas || 'Sin Placas'
+            });
+          }
+        }
+
+        const rescuesRes = await fetch(`http://localhost:3000/rescues`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (rescuesRes.ok) {
+          const allRescues = await rescuesRes.json();
+          
+          const misRescates = allRescues.filter((r: any) => r.mechanicId === payload.sub);
+          const enCurso = misRescates.find((r: any) => ['ACCEPTED', 'EN_ROUTE', 'ON_SITE'].includes(r.status));
+          
+          setActiveRescue(enCurso || null);
+          if (enCurso) {
+            localStorage.setItem('active_mechanic_rescue_id', enCurso.id);
+          } else {
+            localStorage.removeItem('active_mechanic_rescue_id');
+          }
+
+          const finalizados = misRescates.filter((r: any) => r.status === 'COMPLETED');
+
+          setStats({
+            ganancias: finalizados.length * 350,
+            servicios: finalizados.length
+          });
+
+          // Invertir para mostrar los más recientes arriba
+          setHistorial(finalizados.reverse().slice(0, 3)); 
+        }
+
+      } catch (error) {
+        console.error('Error al cargar datos del dashboard:', error);
+      }
+    };
+
+    loadDashboardData();
+    const dashboardInterval = setInterval(loadDashboardData, 3000); 
+    return () => clearInterval(dashboardInterval);
+  }, []);
+
+  useEffect(() => {
+    if (!isMechanicOnline || incomingOrderModal || activeRescue) return;
+
+    const radarScan = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch('http://localhost:3000/rescues/pending', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.ok) {
+          const pendingRescues = await res.json();
+          if (pendingRescues.length > 0) {
+            setIncomingOrderModal(true);
+          }
+        }
+      } catch (error) {
+      }
+    };
+
+    const scanInterval = setInterval(radarScan, 5000);
+    return () => clearInterval(scanInterval);
+  }, [isMechanicOnline, incomingOrderModal, activeRescue, setIncomingOrderModal]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 pb-24">
       {/* Top Header */}
       <IonHeader className="bg-white/80 backdrop-blur-md border-b border-slate-200">
         <IonToolbar>
-          <div
-            onClick={() => navigateTo('/mecanico/profile')}
-            className="flex items-center gap-3 cursor-pointer group active:scale-98 transition-transform"
-          >
-            <IonAvatar size="md" className="border border-slate-200 group-hover:border-blue-500 transition-colors">
-              <AppImage
-                src={currentUser.avatarUrl}
-                alt={currentUser.name}
-                type="mechanic"
-                className="w-full h-full object-cover"
-              />
+          <div onClick={() => navigateTo('/mecanico/profile')} className="flex items-center gap-3 cursor-pointer group active:scale-98 transition-transform">
+            <IonAvatar size="md" className="border border-slate-200 group-hover:border-blue-500 transition-colors flex items-center justify-center bg-slate-100">
+              {mechanicData.avatarUrl ? (
+                <AppImage src={mechanicData.avatarUrl} alt={mechanicData.firstName} type="mechanic" className="w-full h-full object-cover" />
+              ) : (
+                <span className="material-symbols-outlined text-slate-400">person</span>
+              )}
             </IonAvatar>
             <div>
               <h2 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">
-                {currentUser.name} {currentUser.lastName}
+                {mechanicData.firstName} {mechanicData.lastName}
               </h2>
               <p className="text-[10px] text-slate-400">
-                {currentUser.serviceVehicle?.make} {currentUser.serviceVehicle?.model} ({currentUser.serviceVehicle?.plate || 'ID: MEC-88'})
+                {vehicleData.marca} {vehicleData.modelo} ({vehicleData.placas})
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isMechanicOnline ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'
-                }`}
-              />
+              <span className={`w-2 h-2 rounded-full ${isMechanicOnline ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
               <span className="text-xs font-semibold text-slate-700">
                 {isMechanicOnline ? 'En Línea' : 'Pausa'}
               </span>
-              <IonToggle checked={isMechanicOnline} onIonChange={setIsMechanicOnline} />
+              <IonToggle checked={isMechanicOnline} onIonChange={(checked) => {
+                setIsMechanicOnline(checked);
+                if (checked) showToast('Conectado. Buscando solicitudes cercanas...', 'success');
+              }} />
             </div>
           </div>
         </IonToolbar>
       </IonHeader>
 
       <div className="flex-1 max-w-2xl w-full mx-auto p-4 space-y-4">
-        {/* Active Service In-Progress Alert Banner */}
-        {activeRequest && (
+        {/* Banner de Servicio Activo REAL */}
+        {activeRescue && (
           <div className="bg-slate-900 text-white p-4 rounded-2xl border border-slate-800 shadow-md flex items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
                 <span className="material-symbols-outlined text-2xl animate-spin">autorenew</span>
               </div>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">
-                  Servicio Activo en Curso
-                </span>
-                <h3 className="font-bold text-sm text-white">
-                  {activeRequest.clientName} • {activeRequest.issueTitle}
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Estado: <span className="text-blue-400 font-semibold">{activeRequest.status}</span>
-                </p>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Servicio Activo en Curso</span>
+                <h3 className="font-bold text-sm text-white">ID Cliente: {activeRescue.clientId.substring(0,8)}</h3>
+                <p className="text-xs text-slate-400">Estado: <span className="text-blue-400 font-semibold">{activeRescue.status}</span></p>
               </div>
             </div>
-
-            <button
-              onClick={() => navigateTo('/mecanico/service-flow')}
-              className="px-3.5 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center gap-1 shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
-            >
+            <button onClick={() => navigateTo('/mecanico/service-flow')} className="px-3.5 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center gap-1 shadow-sm hover:bg-blue-700 active:scale-95 transition-all cursor-pointer whitespace-nowrap">
               <span>Abrir Mapa</span>
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>
@@ -101,39 +192,28 @@ export const MechanicHomeScreen: React.FC = () => {
         {/* Daily Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Ganancias Hoy
-            </span>
-            <p className="text-2xl font-bold text-slate-900 mt-1">$1,420</p>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ganancias Hoy</span>
+            <p className="text-2xl font-bold text-slate-900 mt-1">${stats.ganancias}</p>
             <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5 mt-1">
-              <span className="material-symbols-outlined text-xs">trending_up</span> +18%
+              {stats.ganancias > 0 ? '+100%' : 'En espera'}
             </span>
           </div>
-
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Servicios Hoy
-            </span>
-            <p className="text-2xl font-bold text-slate-900 mt-1">4</p>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Servicios Hoy</span>
+            <p className="text-2xl font-bold text-slate-900 mt-1">{stats.servicios}</p>
             <span className="text-[10px] text-slate-400 font-medium mt-1">Meta: 6</span>
           </div>
-
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Calificación
-            </span>
-            <p className="text-2xl font-bold text-yellow-600 mt-1 flex items-center gap-1">
-              4.9 <span className="text-sm">★</span>
-            </p>
-            <span className="text-[10px] text-slate-400 font-medium mt-1">124 reseñas</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calificación</span>
+            <p className="text-2xl font-bold text-yellow-600 mt-1 flex items-center gap-1">{mechanicData.rating} <span className="text-sm">★</span></p>
+            <span className="text-[10px] text-slate-400 font-medium mt-1">Nuevo</span>
           </div>
-
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Turno Activo
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Turno Activo</span>
+            <p className="text-2xl font-bold text-blue-600 mt-1">{isMechanicOnline ? 'On' : 'Off'}</p>
+            <span className="text-[10px] text-emerald-600 font-semibold mt-1">
+              {isMechanicOnline ? 'Recibiendo viajes' : 'Descanso'}
             </span>
-            <p className="text-2xl font-bold text-blue-600 mt-1">5.2 h</p>
-            <span className="text-[10px] text-emerald-600 font-semibold mt-1">Óptimo</span>
           </div>
         </div>
 
@@ -142,76 +222,59 @@ export const MechanicHomeScreen: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold text-sm text-slate-900">Radar de Cobertura y Demanda</h3>
-              <p className="text-xs text-slate-500">Radio operativo: 5 km • Zona activa: Del Valle / Condesa</p>
+              <p className="text-xs text-slate-500">Radio operativo: 5 km • Zona activa: Tu ubicación actual</p>
             </div>
-            <button
-              onClick={() => setIncomingOrderModal(true)}
+            {/* Botón de Simular Solicitud Restaurado */}
+            <button 
+              onClick={() => setIncomingOrderModal(true)} 
               className="px-3 py-1.5 bg-yellow-400 text-slate-900 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs hover:bg-yellow-300 active:scale-95 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm">notification_important</span>
               Simular Solicitud
             </button>
           </div>
-
           <div className="w-full h-52 rounded-xl overflow-hidden border border-slate-200 relative">
+             {/* El mapa se mostrará aquí */}
             <InteractiveMap showRoute={false} />
+            
+            {!isMechanicOnline && (
+              <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center">
+                 <div className="bg-white px-4 py-2 rounded-xl font-bold text-xs shadow-md">
+                   Ponte en línea para ver el mapa activo
+                 </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Recent Service History for Mechanic */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">
           <h3 className="font-bold text-sm text-slate-900">Últimos Servicios Realizados</h3>
-
+          
           <div className="space-y-2">
-            {[
-              {
-                id: 'SR-3920',
-                client: 'Mariana López',
-                vehicle: 'Mazda CX-5',
-                service: 'Paso de Corriente',
-                time: 'Hace 1 hora',
-                amount: '$350 MXN',
-                rating: 5.0,
-              },
-              {
-                id: 'SR-3918',
-                client: 'Jorge Ortiz',
-                vehicle: 'Volkswagen Golf',
-                service: 'Grúa de Arrastre',
-                time: 'Hace 3 horas',
-                amount: '$750 MXN',
-                rating: 4.8,
-              },
-              {
-                id: 'SR-3912',
-                client: 'Lucía Morales',
-                vehicle: 'Honda Civic',
-                service: 'Cambio de Neumático',
-                time: 'Hace 5 horas',
-                amount: '$320 MXN',
-                rating: 5.0,
-              },
-            ].map((s) => (
-              <div
-                key={s.id}
-                className="p-3 bg-slate-50 rounded-xl flex items-center justify-between gap-3 text-xs border border-slate-200"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-white text-emerald-600 flex items-center justify-center font-bold border border-slate-200">
-                    <span className="material-symbols-outlined text-base">check_circle</span>
+            {historial.length > 0 ? (
+              historial.map((s) => (
+                <div key={s.id} className="p-3 bg-slate-50 rounded-xl flex items-center justify-between gap-3 text-xs border border-slate-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold border border-emerald-100">
+                      <span className="material-symbols-outlined text-base">check_circle</span>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900">Auxilio Vial Exitoso</p>
+                      <p className="text-[11px] text-slate-500">{s.description.substring(0,25)}...</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-900">{s.client} ({s.vehicle})</p>
-                    <p className="text-[11px] text-slate-500">{s.service} • {s.time}</p>
+                  <div className="text-right">
+                    <p className="font-bold text-slate-900 text-sm">$350 MXN</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">Completado</p>
                   </div>
                 </div>
-
-                <div className="text-right">
-                  <p className="font-bold text-slate-900 text-sm">{s.amount}</p>
-                  <p className="text-[10px] text-yellow-600 font-bold">★ {s.rating}</p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-6 text-slate-500 text-xs">
+                Aún no has completado ningún servicio.
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

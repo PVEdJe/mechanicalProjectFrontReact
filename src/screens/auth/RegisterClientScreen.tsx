@@ -16,22 +16,22 @@ import {
 export const RegisterClientScreen: React.FC = () => {
   const { navigateTo, loginWithRole, showToast, addVehicle } = useApp();
   const [formData, setFormData] = useState({
-    name: 'Salvador',
-    lastName: 'Hernández',
-    email: 'salvador.hdz@ejemplo.com',
-    phone: '+52 55 4192 8830',
-    password: 'Password123!',
-    confirmPassword: 'Password123!',
-    make: 'Tesla',
-    model: 'Model 3',
-    year: '2023',
-    color: 'Blanco Perla',
-    plate: 'ABC-1234',
+    name: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    make: '',
+    model: '',
+    year: '',
+    color: '',
+    plate: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
       setErrorMsg('Las contraseñas no coinciden');
@@ -39,20 +39,49 @@ export const RegisterClientScreen: React.FC = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      addVehicle({
-        make: formData.make,
-        model: formData.model,
-        year: parseInt(formData.year) || 2023,
-        color: formData.color,
-        plate: formData.plate,
-        imageUrl: 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800&auto=format&fit=crop&q=60',
-        isPrimary: true,
+    setErrorMsg('');
+
+    try {
+      const respuesta = await fetch('http://localhost:3000/users/register', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          firstName: formData.name,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone, 
+          // role: 'CLIENTE' // Descomenta si necesitas enviar el rol explícitamente
+        
+          vehiculo: {
+            marca: formData.make,
+            modelo: formData.model,
+            anio: Number(formData.year),
+            color: formData.color,
+            placas: formData.plate,
+            esPrincipal: true 
+          }
+        })
       });
-      showToast('¡Cuenta creada correctamente!', 'success', 'check_circle');
-      loginWithRole('cliente');
-    }, 1000);
+
+      if (respuesta.ok) {
+        const usuarioCreado = await respuesta.json();
+        
+        showToast('¡Cuenta creada correctamente!', 'success', 'check_circle');
+        
+        navigateTo('/auth/login');
+      } else {
+        const errorData = await respuesta.json();
+        setErrorMsg(errorData.message || 'Error al crear la cuenta. Verifica tus datos.');
+      }
+    } catch (error) {
+      console.error('Error de red:', error);
+      setErrorMsg('Error de conexión con el servidor. ¿Está encendido NestJS?');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

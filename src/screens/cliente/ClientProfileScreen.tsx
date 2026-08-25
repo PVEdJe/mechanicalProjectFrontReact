@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AppImage } from '../../components/shared/AppImage';
 import {
@@ -17,9 +17,54 @@ import {
 
 export const ClientProfileScreen: React.FC = () => {
   const { currentUser, logout, navigateTo, showToast } = useApp();
+  
+  const [userData, setUserData] = useState({
+    firstName: 'Cargando...',
+    lastName: '',
+    email: 'cargando@...',
+  });
+
   const [notifications, setNotifications] = useState(true);
   const [locationSharing, setLocationSharing] = useState(true);
-  const [emergencyPhone, setEmergencyPhone] = useState('+52 55 9812 3456');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const userId = payload.sub;
+
+        const respuesta = await fetch(`http://localhost:3000/users/${userId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (respuesta.ok) {
+          const datosReales = await respuesta.json();
+          setUserData({
+            firstName: datosReales.firstName,
+            lastName: datosReales.lastName,
+            email: datosReales.email,
+          });
+          
+          if (datosReales.emergencyPhone) {
+            setEmergencyPhone(datosReales.emergencyPhone);
+          }
+        }
+      } catch (error) {
+        console.error('Error al cargar el perfil real:', error);
+      }
+    };
+
+    fetchProfileData();
+  }, []);
 
   const handleSave = () => {
     showToast('Preferencias actualizadas con éxito', 'success', 'check_circle');
@@ -41,7 +86,7 @@ export const ClientProfileScreen: React.FC = () => {
             <IonAvatar  className="border-3 border-white shadow-md mx-auto">
               <AppImage
                 src={currentUser.avatarUrl}
-                alt={currentUser.name}
+                alt="Avatar"
                 type="avatar"
                 className="w-full h-full object-cover"
               />
@@ -50,8 +95,10 @@ export const ClientProfileScreen: React.FC = () => {
               <span className="material-symbols-outlined text-xs">edit</span>
             </div>
           </div>
-          <h2 className="text-lg font-bold text-slate-900 mt-3">{currentUser.name}</h2>
-          <p className="text-xs text-slate-500">{currentUser.email}</p>
+          <h2 className="text-lg font-bold text-slate-900 mt-3">
+            {userData.firstName} {userData.lastName}
+          </h2>
+          <p className="text-xs text-slate-500">{userData.email}</p>
           <div className="inline-block mt-2 px-3 py-1 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-full border border-blue-200">
             Cliente Verificado
           </div>
@@ -73,7 +120,8 @@ export const ClientProfileScreen: React.FC = () => {
                 label="Teléfono de Emergencia"
                 type="tel"
                 value={emergencyPhone}
-                onIonChange={(v) => setEmergencyPhone(v)}
+                placeholder="Ej. +52 55 1234 5678"
+                onIonChange={(v) => setEmergencyPhone(v as string)}
               />
             </IonCardContent>
           </IonCard>
@@ -134,17 +182,16 @@ export const ClientProfileScreen: React.FC = () => {
             Guardar Cambios
           </IonButton>
 
-         
-<IonButton 
-  expand="block" 
-  fill="outline" 
-  color="danger" 
-  size="default" 
-  onClick={logout}  // ← Así debe estar
->
-  <span className="material-symbols-outlined text-base mr-1">logout</span>
-  Cerrar Sesión
-</IonButton>
+          <IonButton 
+            expand="block" 
+            fill="outline" 
+            color="danger" 
+            size="default" 
+            onClick={logout}
+          >
+            <span className="material-symbols-outlined text-base mr-1">logout</span>
+            Cerrar Sesión
+          </IonButton>
         </div>
       </IonContent>
     </div>

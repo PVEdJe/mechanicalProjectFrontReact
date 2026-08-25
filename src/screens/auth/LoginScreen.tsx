@@ -1,4 +1,3 @@
-// screens/auth/LoginScreen.tsx
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -14,16 +13,17 @@ import {
   IonSpinner,
 } from '../../components/ionic/IonicComponents';
 
-// ✅ Asegúrate de que sea export const (no export default)
 export const LoginScreen: React.FC = () => {
   const { navigateTo, loginWithRole } = useApp();
-  const [email, setEmail] = useState<string>('salvador.hdz@ejemplo.com');
-  const [password, setPassword] = useState<string>('AutoRescate2026!');
+  
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setErrorMsg('Por favor completa todos los campos.');
@@ -33,28 +33,45 @@ export const LoginScreen: React.FC = () => {
     setIsLoading(true);
     setErrorMsg('');
 
-    setTimeout(() => {
-      setIsLoading(false);
-      const lower = email.toLowerCase();
-      if (lower.includes('admin')) {
-        loginWithRole('admin');
-      } else if (lower.includes('mecanico') || lower.includes('carlos')) {
-        loginWithRole('mecanico');
+    try {
+      const respuesta = await fetch('http://localhost:3000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (respuesta.ok) {
+        const data = await respuesta.json();
+        
+        localStorage.setItem('access_token', data.access_token);
+        console.log('¡Login exitoso! Token guardado:', data.access_token);
+        
+        const rolUsuario = data.user?.role?.toLowerCase() || 'cliente';
+        
+        loginWithRole(rolUsuario);
       } else {
-        loginWithRole('cliente');
+        const errorData = await respuesta.json();
+        setErrorMsg(errorData.message || 'Correo o contraseña incorrectos');
       }
-    }, 800);
+    } catch (error) {
+      console.error('Error de red:', error);
+      setErrorMsg('Error de conexión. Verifica que el backend esté corriendo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDemoSelect = (role: 'cliente' | 'mecanico' | 'admin') => {
     if (role === 'cliente') {
-      setEmail('salvador.hdz@ejemplo.com');
+      setEmail('');
     } else if (role === 'mecanico') {
-      setEmail('carlos.m@autorescate.mx');
+      setEmail('');
     } else {
-      setEmail('admin@autorescate.mx');
+      setEmail('');
     }
-    setPassword('Pass123456!');
+    setPassword('');
     setErrorMsg('');
   };
 
@@ -79,7 +96,7 @@ export const LoginScreen: React.FC = () => {
         {/* Demo Fast Login Buttons */}
         <div className="mb-4 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-            Accesos de prueba (Auto-detecta rol):
+            Accesos rápidos:
           </p>
           <div className="grid grid-cols-3 gap-2">
             <button
@@ -88,7 +105,6 @@ export const LoginScreen: React.FC = () => {
               className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold hover:border-blue-500 text-left transition-all active:scale-95 cursor-pointer"
             >
               <span className="block text-slate-800 font-bold">👤 Cliente</span>
-              <span className="text-[10px] text-slate-400 truncate block">salvador.hdz</span>
             </button>
             <button
               type="button"
@@ -96,7 +112,6 @@ export const LoginScreen: React.FC = () => {
               className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold hover:border-blue-500 text-left transition-all active:scale-95 cursor-pointer"
             >
               <span className="block text-blue-600 font-bold">🔧 Mecánico</span>
-              <span className="text-[10px] text-slate-400 truncate block">carlos.m</span>
             </button>
             <button
               type="button"
@@ -104,7 +119,6 @@ export const LoginScreen: React.FC = () => {
               className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold hover:border-blue-500 text-left transition-all active:scale-95 cursor-pointer"
             >
               <span className="block text-slate-900 font-bold">🛡️ Admin</span>
-              <span className="text-[10px] text-slate-400 truncate block">admin@</span>
             </button>
           </div>
         </div>
@@ -125,7 +139,7 @@ export const LoginScreen: React.FC = () => {
                   type="email"
                   placeholder="ejemplo@correo.com"
                   value={email}
-                  onIonChange={(v) => setEmail(v)}
+                  onIonChange={(v) => setEmail(v as string)}
                   required
                 />
               </div>
