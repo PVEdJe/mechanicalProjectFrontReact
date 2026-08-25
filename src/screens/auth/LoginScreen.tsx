@@ -32,14 +32,14 @@ export const LoginScreen: React.FC = () => {
     setSelectedRole(role);
 
     if (role === 'cliente') {
-      setEmail('salvador.hdz@ejemplo.com');
+      setEmail('');
     } else if (role === 'mecanico') {
-      setEmail('carlos.m@autorescate.mx');
+      setEmail('');
     } else {
-      setEmail('admin@autorescate.mx');
+      setEmail('');
     }
 
-    setPassword('AutoRescate2026!');
+    setPassword('');
     setErrorMsg('');
   };
 

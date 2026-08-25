@@ -24,6 +24,10 @@ export const MechanicProfileScreen: React.FC = () => {
   const [description, setDescription] = useState('');
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [avatarUrl, setAvatarUrl] = useState('');
+  
+  // Estados para leer la reputación real
+  const [rating, setRating] = useState(5.0);
+  const [ratingCount, setRatingCount] = useState(0);
 
   const cargarPerfil = async () => {
     try {
@@ -44,8 +48,19 @@ export const MechanicProfileScreen: React.FC = () => {
         setYearsExperience(data.experiencia || 0);
         setDescription(data.descripcion || '');
         setAvatarUrl(data.avatarUrl || '');
+        
+  
+        const userRating = typeof data.rating !== 'undefined' && data.rating !== null ? Number(data.rating) : 5.0;
+        const userRatingCount = typeof data.ratingCount !== 'undefined' && data.ratingCount !== null ? Number(data.ratingCount) : 0;
+        
+        setRating(userRating);
+        setRatingCount(userRatingCount);
+
         if (data.especialidades) {
-          setSpecialties(data.especialidades.split(','));
+          const specsArray = data.especialidades.split(',').filter((s: string) => s.trim() !== '');
+          setSpecialties(specsArray);
+        } else {
+          setSpecialties([]);
         }
       }
     } catch (error) {
@@ -71,7 +86,9 @@ export const MechanicProfileScreen: React.FC = () => {
       const token = localStorage.getItem('access_token');
       const payload = JSON.parse(atob(token!.split('.')[1]));
 
-      const res = await fetch(`http://localhost:3000/users/${payload.sub}/perfil`, {
+      const especialidadesString = specialties.join(',');
+
+      const res = await fetch(`http://localhost:3000/users/${payload.sub}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -84,13 +101,14 @@ export const MechanicProfileScreen: React.FC = () => {
           email,
           experiencia: Number(yearsExperience),
           descripcion: description,
-          especialidades: specialties.join(','),
+          especialidades: especialidadesString,
         })
       });
 
       if (res.ok) {
         showToast('Perfil actualizado correctamente', 'success', 'check_circle');
         setIsEditModalOpen(false);
+        await cargarPerfil();
       } else {
         showToast('Error al actualizar el perfil', 'danger');
       }
@@ -147,8 +165,9 @@ export const MechanicProfileScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-sm text-slate-400">call</span> {phone}
               </p>
               <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs">
+                {/* 🌟 AQUÍ SE IMPRIME EL RATING REAL Y DINÁMICO 🌟 */}
                 <span className="px-2.5 py-1 rounded-lg bg-yellow-50 text-yellow-800 font-bold border border-yellow-200 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs text-yellow-600">star</span> 4.9 (124 reseñas)
+                  <span className="material-symbols-outlined text-xs text-yellow-600">star</span> {rating.toFixed(1)} ({ratingCount} reseñas)
                 </span>
                 <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold border border-blue-200 flex items-center gap-1">
                   <span className="material-symbols-outlined text-xs">workspace_premium</span> {yearsExperience} años de exp.
@@ -199,7 +218,7 @@ export const MechanicProfileScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Official Certifications & Documents Card (Static design placeholders) */}
+        {/* Official Certifications & Documents Card */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-3">
           <h3 className="font-bold text-sm text-slate-900">Documentación Oficial y Seguridad</h3>
           <div className="space-y-2.5">
