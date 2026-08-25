@@ -59,19 +59,10 @@ export const SearchingScreen: React.FC = () => {
               <div className="text-left">
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block">Buscando unidad</span>
                 <h3 className="font-bold text-sm text-slate-900">Contactando mecánicos cercanos...</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Conectando con 3 unidades en un radio de 3 km ({seconds}s)
-                </p>
               </div>
             </div>
 
-            <div className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-800">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span>Carlos M. (Grúa Ford F-450)</span>
-              </div>
-              <span className="text-blue-600 font-bold">2.4 km</span>
-            </div>
+            
 
             <div className="w-full flex gap-2.5">
               <IonButton

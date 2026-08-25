@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AppImage } from '../../components/shared/AppImage';
 import {
@@ -9,7 +9,99 @@ import {
 } from '../../components/ionic/IonicComponents';
 
 export const AdminDashboardScreen: React.FC = () => {
-  const { currentUser, pendingMechanics, navigateTo } = useApp();
+  const { currentUser, navigateTo } = useApp();
+  
+  // Estados para datos reales
+  const [rescues, setRescues] = useState<any[]>([]);
+  const [pendingMechanicsCount, setPendingMechanicsCount] = useState(0); // Estado real
+  const [stats, setStats] = useState({
+    activos: 0,
+    enRuta: 0,
+    enSitio: 0,
+    flotaTotal: 0,
+    flotaDisponible: 0,
+    facturacion: 0
+  });
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) return;
+
+        // Cargar todos los rescates
+        const rescuesRes = await fetch(`http://localhost:3000/rescues`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Cargar todos los usuarios para armar la flota y validaciones
+        const usersRes = await fetch(`http://localhost:3000/users/mecanicos/lista`, {
+           headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (rescuesRes.ok && usersRes.ok) {
+          const allRescues = await rescuesRes.json();
+          const allMechanics = await usersRes.json();
+
+          //Conteo de mecánicos pendientes 
+          const pendientes = allMechanics.filter((m: any) => m.validationStatus === 'pending');
+          setPendingMechanicsCount(pendientes.length);
+
+          // Cálculos de Rescates Activos
+          const activeRescues = allRescues.filter((r: any) => ['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ON_SITE', 'IN_PROGRESS'].includes(r.status));
+          const enRutaCount = allRescues.filter((r: any) => ['ACCEPTED', 'EN_ROUTE'].includes(r.status)).length;
+          const enSitioCount = allRescues.filter((r: any) => ['ON_SITE', 'IN_PROGRESS'].includes(r.status)).length;
+
+          // Cálculo de Facturación (Suma de los finalizados)
+          const facturacionTotal = allRescues
+            .filter((r: any) => r.status === 'COMPLETED' && r.totalCost)
+            .reduce((acc: number, r: any) => acc + Number(r.totalCost), 0);
+
+          // Cálculos de Flota
+          const activosCount = allMechanics.filter((m: any) => m.isAvailable).length;
+
+          setStats({
+            activos: activeRescues.length,
+            enRuta: enRutaCount,
+            enSitio: enSitioCount,
+            flotaTotal: allMechanics.length,
+            flotaDisponible: activosCount,
+            facturacion: facturacionTotal
+          });
+
+          setRescues(allRescues.reverse().slice(0, 10));
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
+
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 4000); // Refresco cada 4 segundos
+    return () => clearInterval(interval);
+  }, []);
+
+  // Helper para asignar colores a la tabla
+  const getBadgeStyle = (status: string) => {
+    if (['PENDING'].includes(status)) return 'bg-yellow-50 text-yellow-800 border-yellow-200';
+    if (['ACCEPTED', 'EN_ROUTE'].includes(status)) return 'bg-blue-50 text-blue-700 border-blue-200';
+    if (['ON_SITE', 'IN_PROGRESS'].includes(status)) return 'bg-purple-50 text-purple-700 border-purple-200';
+    if (['COMPLETED'].includes(status)) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    return 'bg-red-50 text-red-700 border-red-200'; // Cancelled
+  };
+
+  const getStatusText = (status: string) => {
+    const map: Record<string, string> = {
+      'PENDING': 'Buscando',
+      'ACCEPTED': 'En camino',
+      'EN_ROUTE': 'En camino',
+      'ON_SITE': 'En sitio',
+      'IN_PROGRESS': 'Reparando',
+      'COMPLETED': 'Completado',
+      'CANCELLED': 'Cancelado'
+    };
+    return map[status] || status;
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 pb-24">
@@ -33,9 +125,9 @@ export const AdminDashboardScreen: React.FC = () => {
               title="Solicitudes pendientes"
             >
               <span className="material-symbols-outlined text-2xl">person_add</span>
-              {pendingMechanics.filter((m) => m.status === 'pending').length > 0 && (
+              {pendingMechanicsCount > 0 && (
                 <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {pendingMechanics.filter((m) => m.status === 'pending').length}
+                  {pendingMechanicsCount}
                 </span>
               )}
             </button>
@@ -75,7 +167,7 @@ export const AdminDashboardScreen: React.FC = () => {
             className="px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-50 whitespace-nowrap cursor-pointer shadow-2xs"
           >
             <span className="material-symbols-outlined text-sm text-blue-600">verified_user</span>
-            Validación de Mecánicos ({pendingMechanics.filter((m) => m.status === 'pending').length})
+            Validación de Mecánicos ({pendingMechanicsCount})
           </button>
 
           <button
@@ -96,7 +188,7 @@ export const AdminDashboardScreen: React.FC = () => {
         </div>
 
         {/* Pending Mechanic Alert Banner */}
-        {pendingMechanics.filter((m) => m.status === 'pending').length > 0 && (
+        {pendingMechanicsCount > 0 && (
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-yellow-400 text-slate-900 flex items-center justify-center font-bold shrink-0">
@@ -104,7 +196,7 @@ export const AdminDashboardScreen: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-bold text-sm text-slate-900">
-                  {pendingMechanics.filter((m) => m.status === 'pending').length} Expediente(s) Pendientes de Validación
+                  {pendingMechanicsCount} Expediente(s) Pendientes de Validación
                 </h4>
                 <p className="text-xs text-slate-600">
                   Hay técnicos en espera de revisión documental para operar en la plataforma.
@@ -131,36 +223,36 @@ export const AdminDashboardScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-base">electric_bolt</span>
               </span>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">18</p>
+            <p className="text-2xl font-bold text-slate-900 mt-2">{stats.activos}</p>
             <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
-              <span className="material-symbols-outlined text-xs">trending_up</span> 6 en ruta • 12 en sitio
+              <span className="material-symbols-outlined text-xs">trending_up</span> {stats.enRuta} en ruta • {stats.enSitio} en sitio
             </span>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Flota Conectada
+                Flota Registrada
               </span>
               <span className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <span className="material-symbols-outlined text-base">local_shipping</span>
               </span>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">42</p>
-            <span className="text-[10px] text-slate-400 font-medium mt-1">34 disponibles • 8 en turno</span>
+            <p className="text-2xl font-bold text-slate-900 mt-2">{stats.flotaTotal}</p>
+            <span className="text-[10px] text-slate-400 font-medium mt-1">{stats.flotaDisponible} en turno recibiendo viajes</span>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Facturación Hoy
+                Facturación Total
               </span>
               <span className="w-7 h-7 rounded-lg bg-yellow-50 text-yellow-700 flex items-center justify-center">
                 <span className="material-symbols-outlined text-base">payments</span>
               </span>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-2">$48,920</p>
-            <span className="text-[10px] text-emerald-600 font-semibold mt-1">+24% vs promedio</span>
+            <p className="text-2xl font-bold text-slate-900 mt-2">${stats.facturacion.toLocaleString('es-MX')}</p>
+            <span className="text-[10px] text-emerald-600 font-semibold mt-1">En tiempo real</span>
           </div>
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
@@ -201,83 +293,38 @@ export const AdminDashboardScreen: React.FC = () => {
                   <th className="p-3">Cliente / Vehículo</th>
                   <th className="p-3">Incidencia</th>
                   <th className="p-3">Mecánico Asignado</th>
-                  <th className="p-3">Ubicación</th>
                   <th className="p-3">Estado</th>
                   <th className="p-3 rounded-r-xl text-right">Monto</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {[
-                  {
-                    id: 'SR-4092',
-                    client: 'Salvador Hernández',
-                    car: 'Tesla Model 3',
-                    issue: 'Batería descargada',
-                    mech: 'Carlos Mendoza (Grúa F-450)',
-                    loc: 'Av. Insurgentes Sur 1024',
-                    status: 'En camino (8m)',
-                    badge: 'warning',
-                    cost: '$350',
-                  },
-                  {
-                    id: 'SR-4091',
-                    client: 'Valeria Méndez',
-                    car: 'Nissan Versa',
-                    issue: 'Llanta ponchada',
-                    mech: 'Roberto Sánchez (Taller Móvil)',
-                    loc: 'Paseo de la Reforma 222',
-                    status: 'En sitio',
-                    badge: 'info',
-                    cost: '$280',
-                  },
-                  {
-                    id: 'SR-4090',
-                    client: 'Alejandro Cruz',
-                    car: 'Ford Mustang',
-                    issue: 'Grúa de Arrastre',
-                    mech: 'Arturo Gil (Grúa Plataforma)',
-                    loc: 'Periférico Sur 4120',
-                    status: 'Completado',
-                    badge: 'success',
-                    cost: '$850',
-                  },
-                  {
-                    id: 'SR-4089',
-                    client: 'Claudia Rivas',
-                    car: 'Mazda 3',
-                    issue: 'Sin Combustible',
-                    mech: 'Luis Torres (Moto Asistencia)',
-                    loc: 'Av. Patriotismo 560',
-                    status: 'Completado',
-                    badge: 'success',
-                    cost: '$250',
-                  },
-                ].map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50">
-                    <td className="p-3 font-mono font-bold text-slate-900">{row.id}</td>
-                    <td className="p-3">
-                      <p className="font-bold text-slate-900">{row.client}</p>
-                      <p className="text-[10px] text-slate-400">{row.car}</p>
-                    </td>
-                    <td className="p-3 font-medium text-slate-700">{row.issue}</td>
-                    <td className="p-3 text-blue-600 font-medium">{row.mech}</td>
-                    <td className="p-3 text-slate-500 truncate max-w-[150px]">{row.loc}</td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          row.badge === 'warning'
-                            ? 'bg-yellow-50 text-yellow-800 border border-yellow-200'
-                            : row.badge === 'info'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        }`}
-                      >
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right font-bold text-slate-900">{row.cost}</td>
+                {rescues.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-slate-400">No hay servicios registrados aún.</td>
                   </tr>
-                ))}
+                ) : (
+                  rescues.map((row) => (
+                    <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-mono font-bold text-slate-900">{row.id.substring(0,8).toUpperCase()}</td>
+                      <td className="p-3">
+                        <p className="font-bold text-slate-900">{row.client ? `${row.client.firstName} ${row.client.lastName}` : 'Desconocido'}</p>
+                        <p className="text-[10px] text-slate-400 truncate max-w-[150px]">{row.vehicle ? `${row.vehicle.marca} ${row.vehicle.modelo} (${row.vehicle.placas})` : 'Vehículo'}</p>
+                      </td>
+                      <td className="p-3 font-medium text-slate-700 truncate max-w-[150px]">{row.description}</td>
+                      <td className="p-3 text-blue-600 font-medium">
+                        {row.mechanic ? `${row.mechanic.firstName} ${row.mechanic.lastName}` : 'Buscando...'}
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getBadgeStyle(row.status)}`}>
+                          {getStatusText(row.status)}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right font-bold text-slate-900">
+                        ${row.totalCost || row.estimatedCost || 0}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

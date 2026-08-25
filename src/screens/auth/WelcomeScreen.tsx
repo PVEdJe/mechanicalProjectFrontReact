@@ -69,15 +69,6 @@ export const WelcomeScreen: React.FC = () => {
         >
           Iniciar sesión
         </button>
-
-        <div className="text-center mt-1">
-          <button
-            onClick={() => loginWithRole('cliente')}
-            className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer py-1"
-          >
-            Continuar como invitado →
-          </button>
-        </div>
       </div>
     </div>
   );

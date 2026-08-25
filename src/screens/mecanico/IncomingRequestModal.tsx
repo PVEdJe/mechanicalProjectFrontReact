@@ -72,7 +72,6 @@ export const IncomingRequestModal: React.FC = () => {
 
   if (!incomingOrderModal || !pendingRescue) return null;
 
-
   const handleAccept = async () => {
     setIsLoading(true);
     try {
@@ -138,7 +137,7 @@ export const IncomingRequestModal: React.FC = () => {
               </h3>
             </div>
             <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
-              ★ 5.0 (Nuevo)
+              ★ {clientData?.rating ? Number(clientData.rating).toFixed(1) : '5.0'} (Nuevo)
             </span>
           </div>
 
@@ -185,7 +184,10 @@ export const IncomingRequestModal: React.FC = () => {
             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">Tarifa Estimada</p>
             <p className="text-[11px] text-slate-500">Sujeto a confirmación en sitio</p>
           </div>
-          <p className="text-xl font-bold text-slate-900">$350 MXN</p>
+          {/* 👇 LEYENDO EL COSTO ESTIMADO REAL DE LA BASE DE DATOS 👇 */}
+          <p className="text-xl font-bold text-slate-900">
+             ${pendingRescue.estimatedCost ? pendingRescue.estimatedCost : 350} MXN
+          </p>
         </div>
 
         {/* Action Buttons */}

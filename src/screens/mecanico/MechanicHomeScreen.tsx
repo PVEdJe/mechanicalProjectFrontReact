@@ -3,8 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { InteractiveMap } from '../../components/shared/InteractiveMap';
 import { AppImage } from '../../components/shared/AppImage';
 import {
-  IonHeader, IonToolbar, IonTitle, IonAvatar, IonToggle,
-  IonButton,
+  IonHeader, IonToolbar, IonAvatar, IonToggle,
 } from '../../components/ionic/IonicComponents';
 
 export const MechanicHomeScreen: React.FC = () => {
@@ -17,19 +16,9 @@ export const MechanicHomeScreen: React.FC = () => {
     showToast
   } = useApp();
 
-  // Estados reales de la base de datos
-  const [mechanicData, setMechanicData] = useState({
-    firstName: 'Cargando...',
-    lastName: '',
-    avatarUrl: '',
-    rating: 5.0
-  });
-  const [vehicleData, setVehicleData] = useState({
-    marca: '',
-    modelo: '',
-    placas: ''
-  });
-
+  // Estados
+  const [mechanicData, setMechanicData] = useState({ firstName: 'Cargando...', lastName: '', avatarUrl: '', rating: 5.0 });
+  const [vehicleData, setVehicleData] = useState({ marca: '', modelo: '', placas: '' });
   const [activeRescue, setActiveRescue] = useState<any>(null); 
   const [stats, setStats] = useState({ ganancias: 0, servicios: 0 });
   const [historial, setHistorial] = useState<any[]>([]);
@@ -41,6 +30,7 @@ export const MechanicHomeScreen: React.FC = () => {
         if (!token) return;
         const payload = JSON.parse(atob(token.split('.')[1])); 
 
+        // Buscar datos del mecánico
         const userRes = await fetch(`http://localhost:3000/users/${payload.sub}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -68,32 +58,22 @@ export const MechanicHomeScreen: React.FC = () => {
           }
         }
 
-        const rescuesRes = await fetch(`http://localhost:3000/rescues`, {
+        const dashRes = await fetch(`http://localhost:3000/rescues/mechanic/dashboard`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        if (rescuesRes.ok) {
-          const allRescues = await rescuesRes.json();
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
           
-          const misRescates = allRescues.filter((r: any) => r.mechanicId === payload.sub);
-          const enCurso = misRescates.find((r: any) => ['ACCEPTED', 'EN_ROUTE', 'ON_SITE'].includes(r.status));
-          
-          setActiveRescue(enCurso || null);
-          if (enCurso) {
-            localStorage.setItem('active_mechanic_rescue_id', enCurso.id);
+          setStats(dashData.stats);
+          setHistorial(dashData.historial);
+          setActiveRescue(dashData.activeRescue);
+
+          if (dashData.activeRescue) {
+            localStorage.setItem('active_mechanic_rescue_id', dashData.activeRescue.id);
           } else {
             localStorage.removeItem('active_mechanic_rescue_id');
           }
-
-          const finalizados = misRescates.filter((r: any) => r.status === 'COMPLETED');
-
-          setStats({
-            ganancias: finalizados.length * 350,
-            servicios: finalizados.length
-          });
-
-          // Invertir para mostrar los más recientes arriba
-          setHistorial(finalizados.reverse().slice(0, 3)); 
         }
 
       } catch (error) {
@@ -123,6 +103,7 @@ export const MechanicHomeScreen: React.FC = () => {
           }
         }
       } catch (error) {
+        // Silencioso
       }
     };
 
@@ -261,11 +242,11 @@ export const MechanicHomeScreen: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-bold text-slate-900">Auxilio Vial Exitoso</p>
-                      <p className="text-[11px] text-slate-500">{s.description.substring(0,25)}...</p>
+                      <p className="text-[11px] text-slate-500">{s.description?.substring(0,25)}...</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-slate-900 text-sm">$350 MXN</p>
+                    <p className="font-bold text-slate-900 text-sm">${s.totalCost} MXN</p>
                     <p className="text-[10px] text-emerald-600 font-bold">Completado</p>
                   </div>
                 </div>

@@ -19,9 +19,9 @@ export const RequestWizardScreen: React.FC = () => {
   const [selectedIssue, setSelectedIssue] = useState<IssueOption>(ISSUE_OPTIONS[0]);
   const [address, setAddress] = useState<string>('Av. Insurgentes Sur 1024, Col. Del Valle');
   const [coordinates, setCoordinates] = useState<string>('19.3824° N, 99.1765° W');
-  const [description, setDescription] = useState<string>('El vehículo no arranca y se escucha un chasquido.');
+  const [description, setDescription] = useState<string>('');
   const [photoUrl, setPhotoUrl] = useState<string | undefined>(
-    'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=800&auto=format&fit=crop&q=60'
+    ''
   );
 
   useEffect(() => {
@@ -47,7 +47,6 @@ export const RequestWizardScreen: React.FC = () => {
     fetchVehicle();
   }, []);
 
-  
   const handleNext = async () => {
     if (!activeVehicle) {
       showToast('No se detectó un vehículo activo. Regresa e intenta de nuevo.', 'danger');
@@ -57,7 +56,6 @@ export const RequestWizardScreen: React.FC = () => {
     if (currentStep < 4) {
       setCurrentStep((prev) => (prev + 1) as 1 | 2 | 3 | 4);
     } else {
-      // Paso 4: Enviar a PostgreSQL
       setIsSubmitting(true);
       try {
         const token = localStorage.getItem('access_token');
@@ -75,6 +73,7 @@ export const RequestWizardScreen: React.FC = () => {
             latitude: 19.3824, 
             longitude: -99.1765,
             description: safeDescription,
+            estimatedCost: selectedIssue.suggestedCost 
           })
         });
 
@@ -95,6 +94,7 @@ export const RequestWizardScreen: React.FC = () => {
       }
     }
   };
+// ...
 
   const handleBack = () => {
     if (currentStep > 1) {

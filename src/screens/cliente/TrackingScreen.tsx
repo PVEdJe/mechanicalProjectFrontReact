@@ -7,9 +7,9 @@ import {
   IonHeader,
   IonToolbar,
   IonTitle,
-  IonAvatar,
   IonModal,
   IonAlert,
+  IonButton
 } from '../../components/ionic/IonicComponents';
 
 export const TrackingScreen: React.FC = () => {
@@ -18,6 +18,9 @@ export const TrackingScreen: React.FC = () => {
   const [callModalOpen, setCallModalOpen] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [cancelAlertOpen, setCancelAlertOpen] = useState(false);
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(5);
+
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'user' | 'mechanic'; text: string; time: string }>>([
     {
       sender: 'mechanic',
@@ -32,12 +35,15 @@ export const TrackingScreen: React.FC = () => {
   ]);
   const [newMessage, setNewMessage] = useState('');
   
+  // ESTADOS REALES DE LA BASE DE DATOS
   const [realRescue, setRealRescue] = useState<any>(null);
   const [mechanicInfo, setMechanicInfo] = useState<any>(null);
 
   useEffect(() => {
     const rescueId = localStorage.getItem('client_active_rescue_id');
     if (!rescueId) return;
+
+    let scanInterval: any;
 
     const fetchRescueStatus = async () => {
       try {
@@ -50,7 +56,7 @@ export const TrackingScreen: React.FC = () => {
           const data = await res.json();
           setRealRescue(data);
 
-          if ((data.status === 'ACCEPTED' || data.status === 'EN_ROUTE' || data.status === 'ON_SITE') && data.mechanicId) {
+          if ((data.status === 'ACCEPTED' || data.status === 'EN_ROUTE' || data.status === 'ON_SITE' || data.status === 'IN_PROGRESS') && data.mechanicId) {
             const mechRes = await fetch(`http://localhost:3000/users/${data.mechanicId}`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -60,11 +66,10 @@ export const TrackingScreen: React.FC = () => {
             }
           }
 
+
           if (data.status === 'COMPLETED') {
-             showToast('¡Tu servicio ha finalizado con éxito!', 'success', 'task_alt');
-             localStorage.removeItem('client_active_rescue_id');
-             navigateTo('/cliente/home');
-             return;
+             clearInterval(scanInterval); 
+             setRatingModalOpen(true);  
           }
         }
       } catch (error) {
@@ -73,8 +78,8 @@ export const TrackingScreen: React.FC = () => {
     };
 
     fetchRescueStatus();
-    const interval = setInterval(fetchRescueStatus, 3000);
-    return () => clearInterval(interval);
+    scanInterval = setInterval(fetchRescueStatus, 3000);
+    return () => clearInterval(scanInterval);
   }, []);
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -90,7 +95,7 @@ export const TrackingScreen: React.FC = () => {
         ...prev,
         {
           sender: 'mechanic',
-          text: 'Enterado, ya veo el punto en el GPS. Llego en un momento.',
+          text: 'Enterado.',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -129,10 +134,63 @@ export const TrackingScreen: React.FC = () => {
     }
   };
 
+  // ...
+  const handleSubmitRating = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (mechanicInfo && mechanicInfo.id) {
+         
+         const currentRating = mechanicInfo.rating || 5.0;
+         const currentCount = mechanicInfo.ratingCount || 0;
+         
+         const newCount = currentCount + 1;
+         let newRating = ((currentRating * currentCount) + selectedRating) / newCount;
+         
+
+         newRating = Math.round(newRating * 10) / 10;
+
+
+         const res = await fetch(`http://localhost:3000/users/${mechanicInfo.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ 
+              rating: newRating,
+              ratingCount: newCount
+            })
+         });
+         
+         if(!res.ok) {
+           console.error("No se pudo guardar la calificación");
+         }
+      }
+
+      setRatingModalOpen(false);
+      showToast(`¡Gracias por calificar con ${selectedRating} estrellas!`, 'success');
+      localStorage.removeItem('client_active_rescue_id');
+      navigateTo('/cliente/home');
+
+    } catch (error) {
+      console.error(error);
+      setRatingModalOpen(false);
+      localStorage.removeItem('client_active_rescue_id');
+      navigateTo('/cliente/home');
+    }
+  };
+// ...
+
+  const currentStatus = realRescue?.status || 'PENDING';
+  const isCompleted = currentStatus === 'COMPLETED';
+  const isReparando = currentStatus === 'IN_PROGRESS' || isCompleted;
+  const isOnSite = currentStatus === 'ON_SITE' || isReparando;
+  const isEnCamino = currentStatus === 'ACCEPTED' || currentStatus === 'EN_ROUTE' || isOnSite;
+
   const req = {
-    status: realRescue?.status || 'PENDING',
-    etaMinutes: realRescue?.status === 'PENDING' ? '--' : (realRescue?.status === 'ON_SITE' ? 0 : 8),
-    distanceKm: realRescue?.status === 'PENDING' ? '--' : 2.4,
+    status: currentStatus,
+    etaMinutes: currentStatus === 'PENDING' ? '--' : (isOnSite ? 0 : 8),
+    distanceKm: currentStatus === 'PENDING' ? '--' : 2.4,
     mechanic: mechanicInfo ? {
       name: `${mechanicInfo.firstName} ${mechanicInfo.lastName}`,
       phone: mechanicInfo.phone || '+52 55 0000 0000',
@@ -143,9 +201,6 @@ export const TrackingScreen: React.FC = () => {
       location: { lat: 19.395, lng: -99.168 },
     } : null
   };
-
-  const isEnCamino = req.status === 'ACCEPTED' || req.status === 'EN_ROUTE';
-  const isOnSite = req.status === 'ON_SITE';
 
   return (
     <div className="relative w-full h-screen overflow-hidden flex flex-col bg-slate-50">
@@ -214,10 +269,10 @@ export const TrackingScreen: React.FC = () => {
               <div className="flex justify-between items-end">
                 <div>
                   <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-0.5">
-                    {isOnSite ? 'Mecánico en tu ubicación' : 'En camino'}
+                    {isCompleted ? 'Completado' : isReparando ? 'Mecánico trabajando' : isOnSite ? 'Mecánico en tu ubicación' : 'En camino'}
                   </span>
                   <div className="flex items-baseline gap-2">
-                    <h2 className="text-2xl font-bold text-slate-900">{isOnSite ? 'Arribado' : `${req.etaMinutes} min`}</h2>
+                    <h2 className="text-2xl font-bold text-slate-900">{isCompleted ? 'Finalizado' : isReparando ? 'Reparando' : isOnSite ? 'Arribado' : `${req.etaMinutes} min`}</h2>
                     {!isOnSite && <span className="text-xs font-medium text-slate-400">• {req.distanceKm} km</span>}
                   </div>
                 </div>
@@ -251,33 +306,35 @@ export const TrackingScreen: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quick Actions (Llamar, Mensaje, Cancelar) */}
-              <div className="grid grid-cols-3 gap-2.5">
-                <button
-                  onClick={() => setCallModalOpen(true)}
-                  className="bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">call</span>
-                  Llamar
-                </button>
+              {/* Quick Actions (Solo se muestran si no ha finalizado) */}
+              {!isCompleted && (
+                <div className="grid grid-cols-3 gap-2.5">
+                  <button
+                    onClick={() => setCallModalOpen(true)}
+                    className="bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">call</span>
+                    Llamar
+                  </button>
 
-                <button
-                  onClick={() => setChatModalOpen(true)}
-                  className="bg-white border border-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer relative"
-                >
-                  <span className="material-symbols-outlined text-base text-slate-600">chat</span>
-                  Mensaje
-                  <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
-                </button>
+                  <button
+                    onClick={() => setChatModalOpen(true)}
+                    className="bg-white border border-slate-200 text-slate-700 py-3 rounded-xl text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer relative"
+                  >
+                    <span className="material-symbols-outlined text-base text-slate-600">chat</span>
+                    Mensaje
+                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full" />
+                  </button>
 
-                <button
-                  onClick={() => setCancelAlertOpen(true)}
-                  className="bg-white border border-red-200 text-red-600 py-3 rounded-xl text-xs font-bold hover:bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-base">close</span>
-                  Cancelar
-                </button>
-              </div>
+                  <button
+                    onClick={() => setCancelAlertOpen(true)}
+                    className="bg-white border border-red-200 text-red-600 py-3 rounded-xl text-xs font-bold hover:bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">close</span>
+                    Cancelar
+                  </button>
+                </div>
+              )}
 
               {/* Timeline of Service */}
               <div className="mt-2 mb-4 relative pl-5 border-l-2 border-slate-200 space-y-5">
@@ -293,22 +350,18 @@ export const TrackingScreen: React.FC = () => {
                 </div>
 
                 {/* Step 2: On the way */}
-                <div className={`relative ${!isEnCamino && !isOnSite ? 'opacity-40' : ''}`}>
+                <div className={`relative ${!isEnCamino ? 'opacity-40' : ''}`}>
                   {isOnSite && <div className="absolute -left-[29px] -top-5 w-[2px] h-6 bg-emerald-500" />}
-                  {isEnCamino && <div className="absolute -left-[29px] -top-5 w-[2px] h-6 bg-blue-600" />}
+                  {isEnCamino && !isOnSite && <div className="absolute -left-[29px] -top-5 w-[2px] h-6 bg-blue-600" />}
                   
-                  {isEnCamino ? (
-                    <div className="absolute -left-[31px] top-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center pulse-halo">
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                    </div>
-                  ) : (
-                    <div className="absolute -left-[27px] top-0.5 w-3.5 h-3.5 rounded-full border-2 border-white shadow-xs bg-emerald-500" />
-                  )}
+                  <div className={`absolute -left-[31px] top-0 w-5 h-5 rounded-full flex items-center justify-center ${isOnSite ? 'bg-emerald-500 border-2 border-white w-3.5 h-3.5 left-[27px] top-0.5' : 'bg-blue-100 pulse-halo'}`}>
+                    {!isOnSite && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
+                  </div>
                   
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className={`text-xs font-bold ${isEnCamino ? 'text-blue-600' : 'text-slate-900'}`}>En camino</h4>
-                      <p className="text-[11px] text-slate-500">Unidad de auxilio desplazándose.</p>
+                      <h4 className={`text-xs font-bold ${isEnCamino && !isOnSite ? 'text-blue-600' : 'text-slate-900'}`}>En camino</h4>
+                      {!isOnSite && <p className="text-[11px] text-slate-500">Unidad de auxilio desplazándose.</p>}
                     </div>
                   </div>
                 </div>
@@ -324,26 +377,34 @@ export const TrackingScreen: React.FC = () => {
                     <div className="absolute -left-[27px] top-0.5 w-3.5 h-3.5 rounded-full bg-slate-300 border-2 border-white" />
                   )}
                   <div>
-                    <h4 className={`text-xs font-bold ${isOnSite ? 'text-blue-600' : 'text-slate-700'}`}>En el lugar</h4>
-                    <p className="text-[11px] text-slate-400">Inspección del vehículo en curso.</p>
+                    <h4 className={`text-xs font-bold ${isOnSite && !isReparando ? 'text-blue-600' : 'text-slate-700'}`}>En el lugar</h4>
+                    {!isReparando && isOnSite && <p className="text-[11px] text-slate-400">Inspección del vehículo en curso.</p>}
                   </div>
                 </div>
 
                 {/* Step 4: Repair */}
-                <div className="relative opacity-40">
-                  <div className="absolute -left-[27px] top-0.5 w-3.5 h-3.5 rounded-full bg-slate-300 border-2 border-white" />
+                <div className={`relative ${!isReparando ? 'opacity-40' : ''}`}>
+                  {isCompleted && <div className="absolute -left-[29px] -top-5 w-[2px] h-6 bg-emerald-500" />}
+                  {isReparando && !isCompleted && <div className="absolute -left-[29px] -top-5 w-[2px] h-6 bg-blue-600" />}
+                  
+                  <div className={`absolute -left-[31px] top-0 w-5 h-5 rounded-full flex items-center justify-center ${isCompleted ? 'bg-emerald-500 border-2 border-white w-3.5 h-3.5 left-[27px] top-0.5' : isReparando ? 'bg-blue-100 pulse-halo' : 'bg-slate-300 border-2 border-white w-3.5 h-3.5 left-[27px] top-0.5'}`}>
+                    {isReparando && !isCompleted && <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />}
+                  </div>
+                  
                   <div>
-                    <h4 className="text-xs font-bold text-slate-700">Fase: Reparación en sitio</h4>
-                    <p className="text-[11px] text-slate-400">Maniobras o diagnóstico en curso.</p>
+                    <h4 className={`text-xs font-bold ${isReparando && !isCompleted ? 'text-blue-600' : 'text-slate-900'}`}>Fase: Reparación en sitio</h4>
+                    {isReparando && !isCompleted && <p className="text-[11px] text-slate-400">Maniobras o diagnóstico en curso.</p>}
                   </div>
                 </div>
 
                 {/* Step 5: Completed */}
-                <div className="relative opacity-40">
-                  <div className="absolute -left-[27px] top-0.5 w-3.5 h-3.5 rounded-full bg-slate-300 border-2 border-white" />
+                <div className={`relative ${!isCompleted ? 'opacity-40' : ''}`}>
+                  <div className={`absolute -left-[31px] top-0 w-5 h-5 rounded-full flex items-center justify-center ${isCompleted ? 'bg-emerald-100 pulse-halo' : 'bg-slate-300 border-2 border-white w-3.5 h-3.5 left-[27px] top-0.5'}`}>
+                    {isCompleted && <div className="w-2.5 h-2.5 rounded-full bg-emerald-600" />}
+                  </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-700">Servicio finalizado</h4>
-                    <p className="text-[11px] text-slate-400">Firma de conformidad y pago.</p>
+                    <h4 className={`text-xs font-bold ${isCompleted ? 'text-emerald-600' : 'text-slate-700'}`}>Servicio finalizado</h4>
+                    {isCompleted && <p className="text-[11px] text-slate-400">Firma de conformidad y pago.</p>}
                   </div>
                 </div>
               </div>
@@ -351,6 +412,34 @@ export const TrackingScreen: React.FC = () => {
           )}
         </div>
       </BottomSheet>
+
+      <IonModal isOpen={ratingModalOpen} onDidDismiss={() => {}} title="¡Servicio Completado!">
+        <div className="text-center py-6 px-4 space-y-5 bg-white">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm">
+            <span className="material-symbols-outlined text-3xl">verified</span>
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-slate-900">¡Llegaste a tu destino!</h3>
+            <p className="text-sm text-slate-500 mt-2">¿Cómo fue tu experiencia con <span className="font-bold text-slate-700">{req.mechanic?.name}</span>?</p>
+          </div>
+          
+          <div className="flex items-center justify-center gap-2 my-6">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button 
+                key={star} 
+                onClick={() => setSelectedRating(star)}
+                className={`transition-transform cursor-pointer hover:scale-110 active:scale-95 ${star <= selectedRating ? 'text-yellow-400' : 'text-slate-200'}`}
+              >
+                <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+              </button>
+            ))}
+          </div>
+
+          <IonButton expand="block" size="large" onClick={handleSubmitRating}>
+            Enviar Calificación y Salir
+          </IonButton>
+        </div>
+      </IonModal>
 
       {/* Phone Call Modal */}
       <IonModal isOpen={callModalOpen} onDidDismiss={() => setCallModalOpen(false)} title="Llamada de Asistencia">

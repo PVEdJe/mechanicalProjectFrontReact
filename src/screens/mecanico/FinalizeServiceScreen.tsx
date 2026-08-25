@@ -12,7 +12,7 @@ export const FinalizeServiceScreen: React.FC = () => {
   const [activeRescue, setActiveRescue] = useState<any>(null);
   const [clientInfo, setClientInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [baseCost] = useState(350);
+  const [baseCost, setBaseCost] = useState(0); 
   const [extraCost, setExtraCost] = useState(0);
   const [extraConcept, setExtraConcept] = useState('');
   const [notes, setNotes] = useState('');
@@ -34,6 +34,12 @@ export const FinalizeServiceScreen: React.FC = () => {
         if (res.ok) {
           const rescueData = await res.json();
           setActiveRescue(rescueData);
+          
+          if (rescueData.estimatedCost) {
+             setBaseCost(Number(rescueData.estimatedCost));
+          } else {
+             setBaseCost(350);
+          }
 
           const clientRes = await fetch(`http://localhost:3000/users/${rescueData.clientId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -62,7 +68,11 @@ export const FinalizeServiceScreen: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ status: 'COMPLETED' }) 
+        body: JSON.stringify({ 
+          status: 'COMPLETED',
+          totalCost: totalCost, // Enviamos el total calculado
+          mechanicNotes: notes || extraConcept 
+        }) 
       });
 
       if (res.ok) {

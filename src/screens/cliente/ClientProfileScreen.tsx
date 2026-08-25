@@ -11,7 +11,6 @@ import {
   IonContent,
   IonCard,
   IonCardContent,
-  IonAvatar,
   IonToggle,
   IonButton,
   IonInput,
@@ -21,64 +20,84 @@ export const ClientProfileScreen: React.FC = () => {
   const { currentUser, logout, navigateTo, showToast } = useApp();
 
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [userId, setUserId] = useState('');
 
   const [userData, setUserData] = useState({
     firstName: 'Cargando...',
     lastName: '',
     email: 'cargando@...',
+    avatarUrl: ''
   });
 
   const [notifications, setNotifications] = useState(true);
   const [locationSharing, setLocationSharing] = useState(true);
   const [emergencyPhone, setEmergencyPhone] = useState('');
+  
+  const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
+
+  const fetchProfileData = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentId = payload.sub;
+      setUserId(currentId);
+
+      const respuesta = await fetch(
+        `http://localhost:3000/users/${currentId}`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (respuesta.ok) {
+        const datosReales = await respuesta.json();
+
+        setUserData({
+          firstName: datosReales.firstName,
+          lastName: datosReales.lastName,
+          email: datosReales.email,
+          avatarUrl: datosReales.avatarUrl || ''
+        });
+
+        if (datosReales.emergencyPhone) {
+          setEmergencyPhone(datosReales.emergencyPhone);
+        }
+      }
+    } catch (error) {
+      console.error('Error al cargar el perfil real:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        if (!token) return;
-
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const userId = payload.sub;
-
-        const respuesta = await fetch(
-          `http://localhost:3000/users/${userId}`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (respuesta.ok) {
-          const datosReales = await respuesta.json();
-
-          setUserData({
-            firstName: datosReales.firstName,
-            lastName: datosReales.lastName,
-            email: datosReales.email,
-          });
-
-          if (datosReales.emergencyPhone) {
-            setEmergencyPhone(datosReales.emergencyPhone);
-          }
-        }
-      } catch (error) {
-        console.error('Error al cargar el perfil real:', error);
-      }
-    };
-
     fetchProfileData();
   }, []);
 
-  const handleSave = () => {
-    showToast(
-      'Preferencias actualizadas con éxito',
-      'success',
-      'check_circle'
-    );
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`http://localhost:3000/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ emergencyPhone })
+      });
+
+      if (res.ok) {
+        showToast('Preferencias y contacto guardados exitosamente', 'success', 'check_circle');
+      } else {
+        showToast('Error al guardar en la base de datos', 'danger');
+      }
+    } catch (error) {
+      showToast('Error de red al guardar', 'danger');
+    }
   };
 
   return (
@@ -95,50 +114,37 @@ export const ClientProfileScreen: React.FC = () => {
       <IonContent className="max-w-md mx-auto py-6">
         <div className="text-center mb-6">
           <div className="relative inline-block group">
-            <button
-              type="button"
-              onClick={() => setIsPhotoModalOpen(true)}
-              className="relative cursor-pointer block rounded-full focus:outline-hidden ring-offset-2 focus:ring-2 focus:ring-blue-600 transition-transform active:scale-95"
-              title="Cambiar foto de perfil"
-            >
-              <IonAvatar
-                size="xl"
-                className="border-3 border-white shadow-md mx-auto ring-2 ring-slate-200"
-              >
+            {/* 👇 FOTO MÁS GRANDE (w-28 h-28) Y BOTÓN DE CÁMARA AFUERA 👇 */}
+            <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg mx-auto ring-2 ring-slate-200 bg-slate-100 flex items-center justify-center relative">
+              {userData.avatarUrl || currentUser.avatarUrl ? (
                 <AppImage
-                  src={currentUser.avatarUrl}
-                  alt={currentUser.name || 'Avatar'}
+                  src={userData.avatarUrl || currentUser.avatarUrl}
+                  alt={userData.firstName || 'Avatar'}
                   type="avatar"
                   className="w-full h-full object-cover"
                 />
-              </IonAvatar>
+              ) : (
+                <span className="material-symbols-outlined text-5xl text-slate-300">person</span>
+              )}
+            </div>
 
-              <div className="absolute bottom-0 right-0 bg-blue-600 text-white p-1.5 rounded-full shadow-xs border-2 border-white group-hover:bg-blue-700 transition-colors">
-                <span className="material-symbols-outlined text-xs block">
-                  photo_camera
-                </span>
-              </div>
-            </button>
-          </div>
-
-          <div className="mt-2">
             <button
               type="button"
               onClick={() => setIsPhotoModalOpen(true)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 hover:bg-blue-100/80 px-3 py-1 rounded-full border border-blue-200 transition-colors cursor-pointer"
+              className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full shadow-md border-2 border-white hover:bg-blue-700 transition-colors cursor-pointer active:scale-95"
+              title="Cambiar foto de perfil"
             >
-              <span className="material-symbols-outlined text-sm">
+              <span className="material-symbols-outlined text-sm block">
                 photo_camera
               </span>
-              <span>Cambiar foto de perfil</span>
             </button>
           </div>
 
-          <h2 className="text-lg font-bold text-slate-900 mt-2">
+          <h2 className="text-xl font-bold text-slate-900 mt-4">
             {userData.firstName} {userData.lastName}
           </h2>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-sm text-slate-500">
             {userData.email}
           </p>
 
@@ -147,7 +153,7 @@ export const ClientProfileScreen: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 px-4">
           <IonCard>
             <IonCardContent className="p-4 space-y-3">
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -181,32 +187,36 @@ export const ClientProfileScreen: React.FC = () => {
                   </span>
                   Método de Pago
                 </h3>
-
-                <span className="text-xs text-blue-600 font-bold cursor-pointer hover:underline">
-                  Cambiar
-                </span>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-7 bg-slate-900 rounded text-white flex items-center justify-center font-bold text-[10px] tracking-wider">
-                    VISA
-                  </div>
 
-                  <div>
-                    <p className="font-bold text-xs text-slate-900">
-                      •••• •••• •••• 4242
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      Vence 12/28
-                    </p>
+              {hasPaymentMethod ? (
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-7 bg-slate-900 rounded text-white flex items-center justify-center font-bold text-[10px] tracking-wider">
+                      VISA
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs text-slate-900">
+                        •••• •••• •••• 4242
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        Vence 12/28
+                      </p>
+                    </div>
                   </div>
+                  <button onClick={() => setHasPaymentMethod(false)} className="text-[10px] font-bold text-red-600 hover:underline cursor-pointer">
+                    Eliminar
+                  </button>
                 </div>
-
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  Activa
-                </span>
-              </div>
+              ) : (
+                <button 
+                  onClick={() => { setHasPaymentMethod(true); showToast('Tarjeta guardada exitosamente', 'success'); }} 
+                  className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-bold text-xs hover:bg-slate-50 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-base">add_circle</span> Agregar Tarjeta
+                </button>
+              )}
             </IonCardContent>
           </IonCard>
 
@@ -255,32 +265,37 @@ export const ClientProfileScreen: React.FC = () => {
             </IonCardContent>
           </IonCard>
 
-          <IonButton
-            expand="block"
-            size="default"
-            onClick={handleSave}
-          >
-            Guardar Cambios
-          </IonButton>
+          <div className="pt-2 pb-4 space-y-3">
+            <IonButton
+              expand="block"
+              size="default"
+              onClick={handleSave}
+            >
+              Guardar Cambios
+            </IonButton>
 
-          <IonButton
-            expand="block"
-            fill="outline"
-            color="danger"
-            size="default"
-            onClick={logout}
-          >
-            <span className="material-symbols-outlined text-base mr-1">
-              logout
-            </span>
-            Cerrar Sesión
-          </IonButton>
+            <IonButton
+              expand="block"
+              fill="outline"
+              color="danger"
+              size="default"
+              onClick={logout}
+            >
+              <span className="material-symbols-outlined text-base mr-1">
+                logout
+              </span>
+              Cerrar Sesión
+            </IonButton>
+          </div>
         </div>
       </IonContent>
 
       <AvatarUploadModal
         isOpen={isPhotoModalOpen}
-        onClose={() => setIsPhotoModalOpen(false)}
+        onClose={() => {
+          setIsPhotoModalOpen(false);
+          fetchProfileData();
+        }}
         role="cliente"
       />
     </div>

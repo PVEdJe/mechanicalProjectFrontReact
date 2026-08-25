@@ -12,9 +12,6 @@ export const ServiceFlowScreen: React.FC = () => {
   const [activeRescue, setActiveRescue] = useState<any>(null);
   const [clientInfo, setClientInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [hasStartedRepair, setHasStartedRepair] = useState(false);
-  
   const [callModalOpen, setCallModalOpen] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -40,7 +37,6 @@ export const ServiceFlowScreen: React.FC = () => {
           const rescueData = await res.json();
           setActiveRescue(rescueData);
 
-          // Buscar datos del cliente
           const clientRes = await fetch(`http://localhost:3000/users/${rescueData.clientId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -86,10 +82,10 @@ export const ServiceFlowScreen: React.FC = () => {
     if (activeRescue?.status === 'ACCEPTED' || activeRescue?.status === 'EN_ROUTE') {
       await updateStatusInDB('ON_SITE');
       showToast('Estado actualizado: En el lugar del incidente', 'success', 'place');
-    } else if (activeRescue?.status === 'ON_SITE' && !hasStartedRepair) {
-      setHasStartedRepair(true);
+    } else if (activeRescue?.status === 'ON_SITE') {
+      await updateStatusInDB('IN_PROGRESS');
       showToast('Estado actualizado: Reparación iniciada', 'success', 'build');
-    } else if (activeRescue?.status === 'ON_SITE' && hasStartedRepair) {
+    } else if (activeRescue?.status === 'IN_PROGRESS') {
       navigateTo('/mecanico/finalize');
     }
   };
@@ -110,7 +106,7 @@ export const ServiceFlowScreen: React.FC = () => {
   
   const displayStatus = (activeRescue.status === 'ACCEPTED' || activeRescue.status === 'EN_ROUTE')
     ? 'on_the_way'
-    : (activeRescue.status === 'ON_SITE' && !hasStartedRepair)
+    : (activeRescue.status === 'ON_SITE')
     ? 'arrived'
     : 'in_progress';
 
