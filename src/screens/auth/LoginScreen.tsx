@@ -158,12 +158,13 @@ export const LoginScreen: React.FC = () => {
             Bienvenido de nuevo
           </h2>
 
-          <p className="text-xs text-slate-500 mt-0.5">
+          {/*<p className="text-xs text-slate-500 mt-0.5">
             Ingresa a tu cuenta seleccionando tu tipo de usuario
           </p>
+          */}
         </div>
 
-        {/* Selector de tipo de usuario */}
+        {/* Selector de tipo de usuario 
         <div className="mb-4 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="mb-2">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -218,8 +219,9 @@ export const LoginScreen: React.FC = () => {
             })}
           </div>
         </div>
+        */}
 
-        {/* Accesos rápidos originales */}
+        {/* Accesos rápidos originales 
         <div className="mb-4 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Accesos rápidos:
@@ -257,7 +259,8 @@ export const LoginScreen: React.FC = () => {
             </button>
           </div>
         </div>
-
+        */}
+        
         <IonCard>
           <IonCardContent className="p-5">
             <form onSubmit={handleLogin} className="space-y-4">

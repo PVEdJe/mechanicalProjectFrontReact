@@ -114,33 +114,49 @@ export const ClientProfileScreen: React.FC = () => {
       <IonContent className="max-w-md mx-auto py-6">
         <div className="text-center mb-6">
           <div className="relative inline-block group">
-            {/* 👇 FOTO MÁS GRANDE (w-28 h-28) Y BOTÓN DE CÁMARA AFUERA 👇 */}
-            <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg mx-auto ring-2 ring-slate-200 bg-slate-100 flex items-center justify-center relative">
-              {userData.avatarUrl || currentUser.avatarUrl ? (
+            <button
+              type="button"
+              onClick={() => setIsPhotoModalOpen(true)}
+              className="w-28 h-28 rounded-full overflow-hidden border-4 border-white shadow-lg mx-auto ring-2 ring-slate-200 bg-slate-100 flex items-center justify-center relative cursor-pointer active:scale-95 transition-transform"
+              title="Cambiar foto de perfil"
+            >
+              {userData.avatarUrl || currentUser?.avatarUrl ? (
                 <AppImage
-                  src={userData.avatarUrl || currentUser.avatarUrl}
+                  src={userData.avatarUrl || currentUser?.avatarUrl}
                   alt={userData.firstName || 'Avatar'}
                   type="avatar"
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="material-symbols-outlined text-5xl text-slate-300">person</span>
+                <span className="material-symbols-outlined text-5xl text-slate-300">
+                  person
+                </span>
               )}
+            </button>
+            <div
+              onClick={() => setIsPhotoModalOpen(true)}
+              className="absolute bottom-0 right-0 bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md border-2 border-white cursor-pointer hover:bg-blue-700 transition-colors"
+              title="Cambiar foto de perfil"
+            >
+              <span className="material-symbols-outlined text-sm">
+                photo_camera
+              </span>
             </div>
-
+          </div>
+          <div className="mt-2">
             <button
               type="button"
               onClick={() => setIsPhotoModalOpen(true)}
-              className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full shadow-md border-2 border-white hover:bg-blue-700 transition-colors cursor-pointer active:scale-95"
-              title="Cambiar foto de perfil"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 transition-colors cursor-pointer"
             >
-              <span className="material-symbols-outlined text-sm block">
+              <span className="material-symbols-outlined text-xs">
                 photo_camera
               </span>
+              <span>Cambiar foto</span>
             </button>
           </div>
 
-          <h2 className="text-xl font-bold text-slate-900 mt-4">
+          <h2 className="text-xl font-bold text-slate-900 mt-3">
             {userData.firstName} {userData.lastName}
           </h2>
 
