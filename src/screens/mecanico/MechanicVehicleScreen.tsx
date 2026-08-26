@@ -32,7 +32,7 @@ export const MechanicVehicleScreen: React.FC = () => {
   const { navigateTo, showToast } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [vehiculoId, setVehiculoId] = useState(''); // Guardamos el ID real de la DB
+  const [vehiculoId, setVehiculoId] = useState(''); 
 
   // Estados del Formulario
   const [vehicleType, setVehicleType] = useState('Grúa Plataforma');
@@ -48,7 +48,7 @@ export const MechanicVehicleScreen: React.FC = () => {
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState(PRESET_VEHICLE_IMAGES[0].url);
 
-  // 1. Cargar vehículo desde PostgreSQL
+  // Cargar vehículo 
   const cargarVehiculo = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -62,7 +62,7 @@ export const MechanicVehicleScreen: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data.length > 0) {
-          const v = data[0]; // Tomamos el primer vehículo
+          const v = data[0];
           setVehiculoId(v.id);
           setVehicleType(v.tipo || 'Grúa Plataforma');
           setMake(v.marca || '');
@@ -94,7 +94,7 @@ export const MechanicVehicleScreen: React.FC = () => {
     }
   };
 
-  // 2. Guardar cambios en PostgreSQL
+  // Guardar cambios 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -123,7 +123,7 @@ export const MechanicVehicleScreen: React.FC = () => {
       if (res.ok) {
         showToast('Datos de la unidad actualizados con éxito', 'success', 'local_shipping');
         setIsModalOpen(false);
-        cargarVehiculo(); // Recargamos para ver los cambios
+        cargarVehiculo(); 
       } else {
         showToast('Error al guardar la unidad', 'danger');
       }
@@ -131,6 +131,8 @@ export const MechanicVehicleScreen: React.FC = () => {
       showToast('Error de conexión', 'danger');
     }
   };
+
+  const activeVehicleType = VEHICLE_TYPE_OPTIONS.find(opt => opt.id === vehicleType);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 pb-24">
@@ -165,7 +167,7 @@ export const MechanicVehicleScreen: React.FC = () => {
               <div className="flex items-center justify-between w-full">
                 <div>
                   <span className="px-2.5 py-1 rounded-lg bg-yellow-400 text-slate-900 font-black text-[10px] uppercase tracking-wider inline-block mb-1 shadow-2xs">
-                    {vehicleType}
+                    {activeVehicleType ? activeVehicleType.title : vehicleType}
                   </span>
                   <h2 className="text-xl font-bold text-white leading-tight">
                     {make} {model} ({year})

@@ -40,7 +40,7 @@ export const MechanicHomeScreen: React.FC = () => {
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
             avatarUrl: userData.avatarUrl || '',
-            rating: 5.0 
+            rating: typeof userData.rating !== 'undefined' && userData.rating !== null ? Number(userData.rating) : 5.0 
           });
         }
 
@@ -186,8 +186,9 @@ export const MechanicHomeScreen: React.FC = () => {
           </div>
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calificación</span>
-            <p className="text-2xl font-bold text-yellow-600 mt-1 flex items-center gap-1">{mechanicData.rating} <span className="text-sm">★</span></p>
-            <span className="text-[10px] text-slate-400 font-medium mt-1">Nuevo</span>
+            {/* 👇 CORRECCIÓN: Renderizamos la calificación en tiempo real y formateada a 1 decimal 👇 */}
+            <p className="text-2xl font-bold text-yellow-600 mt-1 flex items-center gap-1">{mechanicData.rating.toFixed(1)} <span className="text-sm">★</span></p>
+            <span className="text-[10px] text-slate-400 font-medium mt-1">Nivel Actual</span>
           </div>
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Turno Activo</span>

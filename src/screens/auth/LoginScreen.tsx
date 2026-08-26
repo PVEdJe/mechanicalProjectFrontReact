@@ -347,13 +347,7 @@ export const LoginScreen: React.FC = () => {
                       <span>Iniciando sesión...</span>
                     </div>
                   ) : (
-                    `Ingresar como ${
-                      selectedRole === 'cliente'
-                        ? 'Cliente'
-                        : selectedRole === 'mecanico'
-                        ? 'Mecánico'
-                        : 'Administrador'
-                    }`
+                    'Ingresar'
                   )}
                 </IonButton>
               </div>

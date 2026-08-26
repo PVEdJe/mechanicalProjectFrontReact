@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AppImage } from '../../components/shared/AppImage';
-import { AvatarUploadModal } from '../../components/shared/AvatarUploadModal';
+import { AvatarUploadModal } from '../../components/shared/AvatarUploadModal'; // 👈 Se agregó la importación del Modal
 import {
   IonHeader,
   IonToolbar,
@@ -24,6 +24,7 @@ const AVAILABLE_SPECIALTIES = [
 ];
 
 export const MechanicProfileScreen: React.FC = () => {
+  // 👇 Se combinaron correctamente las funciones y currentUser 👇
   const {
     isMechanicOnline,
     currentUser,
@@ -33,8 +34,8 @@ export const MechanicProfileScreen: React.FC = () => {
     showToast,
   } = useApp();
 
-  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false); // 👈 Se agregó el estado faltante para la foto
 
   const [name, setName] = useState('Cargando...');
   const [lastName, setLastName] = useState('');
@@ -249,7 +250,7 @@ export const MechanicProfileScreen: React.FC = () => {
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs relative overflow-hidden">
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-
+            
             {/* FOTO */}
             <div className="relative flex flex-col items-center group">
 
@@ -262,24 +263,25 @@ export const MechanicProfileScreen: React.FC = () => {
                 title="Cambiar foto de perfil"
               >
 
-                <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm ring-2 ring-blue-500/20">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-yellow-400 shadow-sm ring-2 ring-blue-500/20 bg-slate-100 flex items-center justify-center">
 
-                  <AppImage
-                    src={
-                      avatarUrl ||
-                      currentUser?.avatarUrl
-                    }
-                    alt={`${name} ${lastName}`}
-                    type="mechanic"
-                    className="w-full h-full object-cover"
-                  />
+                  {avatarUrl ? (
+                    <AppImage
+                      src={avatarUrl}
+                      alt={`${name} ${lastName}`}
+                      type="mechanic"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="material-symbols-outlined text-4xl text-slate-400">person</span>
+                  )}
 
                 </div>
 
-                <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-xs border border-white group-hover:bg-blue-700 transition-colors">
+                <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-slate-900 w-6 h-6 rounded-full flex items-center justify-center shadow-xs border border-white group-hover:bg-yellow-500 transition-colors">
 
                   <span className="material-symbols-outlined text-xs">
-                    photo_camera
+                    verified
                   </span>
 
                 </div>

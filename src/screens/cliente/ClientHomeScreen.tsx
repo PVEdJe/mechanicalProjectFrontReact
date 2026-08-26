@@ -12,41 +12,49 @@ import {
 } from '../../components/ionic/IonicComponents';
 
 export const ClientHomeScreen: React.FC = () => {
-  const { currentUser, navigateTo, createAssistanceRequest, showToast } = useApp();
+  const { navigateTo, createAssistanceRequest, showToast } = useApp();
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   
   // Estados reales de la base de datos
   const [vehiculos, setVehiculos] = useState<any[]>([]);
   const [activeVehicle, setActiveVehicle] = useState<any>(null);
+  
+  const [clientData, setClientData] = useState({ avatarUrl: '' });
 
-  // Cargar vehículos desde MySQL (NestJS)
-  const cargarVehiculos = async () => {
+  const cargarDatos = async () => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) return;
       
       const payload = JSON.parse(atob(token.split('.')[1]));
-      const res = await fetch(`http://localhost:3000/vehiculos/usuario/${payload.sub}`, {
+      
+      const userRes = await fetch(`http://localhost:3000/users/${payload.sub}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        setClientData({ avatarUrl: userData.avatarUrl || '' });
+      }
+
+      const vehRes = await fetch(`http://localhost:3000/vehiculos/usuario/${payload.sub}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      if (res.ok) {
-        const data = await res.json();
+      if (vehRes.ok) {
+        const data = await vehRes.json();
         setVehiculos(data);
-        // Seleccionamos el principal o el primero de la lista
         const principal = data.find((v: any) => v.esPrincipal) || data[0];
         setActiveVehicle(principal || null);
       }
     } catch (error) {
-      console.error('Error al cargar vehículos:', error);
+      console.error('Error al cargar datos:', error);
     }
   };
 
   useEffect(() => {
-    cargarVehiculos();
+    cargarDatos();
   }, []);
 
-  // Cambiar vehículo principal en la BD
   const handleSetPrincipal = async (id: string) => {
     try {
       const token = localStorage.getItem('access_token');
@@ -56,7 +64,7 @@ export const ClientHomeScreen: React.FC = () => {
       });
       
       if (res.ok) {
-        cargarVehiculos(); // Recargar la lista para ver el cambio
+        cargarDatos(); 
         setVehicleModalOpen(false);
         showToast('Vehículo activo actualizado', 'success', 'directions_car');
       }
@@ -101,13 +109,18 @@ export const ClientHomeScreen: React.FC = () => {
               onClick={() => navigateTo('/cliente/profile')}
               className="cursor-pointer active:scale-95 transition-transform"
             >
-              <IonAvatar size="sm" className="border border-slate-200">
-                <AppImage
-                  src={currentUser.avatarUrl}
-                  alt="Perfil"
-                  type="avatar"
-                  className="w-full h-full object-cover"
-                />
+              <IonAvatar size="sm" className="border border-slate-200 overflow-hidden flex items-center justify-center bg-slate-100">
+                {/* 👇 USAMOS LA FOTO REAL CARGADA DE LA BD 👇 */}
+                {clientData.avatarUrl ? (
+                  <AppImage
+                    src={clientData.avatarUrl}
+                    alt="Perfil"
+                    type="avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-slate-400">person</span>
+                )}
               </IonAvatar>
             </button>
           </div>
