@@ -406,6 +406,7 @@ export const IonSegmentButton: React.FC<{
   className?: string;
 }> = ({ value, children, activeValue, onSelect, className = '' }) => {
   const isActive = value === activeValue;
+
   return (
     <button
       type="button"
@@ -438,7 +439,7 @@ export const IonTabs: React.FC<{ children: ReactNode; className?: string }> = ({
 
 export const IonTabBar: React.FC<{ children: ReactNode; className?: string }> = ({ children, className = '' }) => (
   <nav
-    className={`fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center px-4 py-2 pb-safe bg-white/90 backdrop-blur-xl border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] rounded-t-2xl max-w-lg mx-auto md:max-w-xl ${className}`}
+    className={`fixed bottom-0 left-0 right-0 z-30 flex justify-around items-center px-4 py-2 pb-safe bg-white/90 backdrop-blur-xl border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] rounded-t-2xl max-w-lg mx-auto md:max-w-xl ${className}`}
   >
     {children}
   </nav>
@@ -478,6 +479,7 @@ export const IonBadge: React.FC<{
   className?: string;
 }> = ({ children, color = 'primary', className = '' }) => {
   let colorStyles = 'bg-blue-50 text-blue-700 border border-blue-200';
+
   if (color === 'success') colorStyles = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
   if (color === 'danger') colorStyles = 'bg-red-50 text-red-700 border border-red-200';
   if (color === 'tertiary') colorStyles = 'bg-slate-100 text-slate-800 border border-slate-300';
@@ -499,6 +501,7 @@ export const IonAvatar: React.FC<{ children: ReactNode; className?: string; size
   size = 'md',
 }) => {
   const sizeClasses = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-16 h-16' : 'w-11 h-11';
+
   return (
     <div className={`relative rounded-full overflow-hidden shrink-0 border border-slate-200 bg-slate-100 flex items-center justify-center ${sizeClasses} ${className}`}>
       {children}
@@ -561,29 +564,53 @@ export const IonModal: React.FC<{
   children: ReactNode;
   title?: string;
   className?: string;
-}> = ({ isOpen, onDidDismiss, children, title, className = '' }) => {
+  footer?: ReactNode;
+}> = ({ isOpen, onDidDismiss, children, title, className = '', footer }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
-      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onDidDismiss} />
+    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 animate-in fade-in duration-200">
       <div
-        className={`relative z-10 w-full max-w-lg bg-white rounded-t-3xl md:rounded-3xl shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300 ${className}`}
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs"
+        onClick={onDidDismiss}
+      />
+
+      <div
+        className={`relative z-10 w-full max-w-lg bg-white rounded-t-3xl md:rounded-3xl shadow-2xl border border-slate-200 max-h-[92vh] md:max-h-[88vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300 ${className}`}
       >
         {/* Header with grab handle */}
-        <div className="pt-3 pb-3 px-6 flex flex-col items-center border-b border-slate-100 bg-slate-50">
-          <div className="w-12 h-1.5 bg-slate-300 rounded-full mb-3" />
+        <div className="pt-3 pb-3 px-5 sm:px-6 flex flex-col items-center border-b border-slate-100 bg-slate-50 shrink-0">
+          <div className="w-12 h-1.5 bg-slate-300 rounded-full mb-2.5" />
+
           <div className="w-full flex items-center justify-between">
-            <h3 className="font-bold text-base text-slate-900">{title || ''}</h3>
+            <h3 className="font-bold text-sm sm:text-base text-slate-900 truncate pr-2">
+              {title || ''}
+            </h3>
+
             <button
+              type="button"
               onClick={onDidDismiss}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 active:scale-95 transition-all cursor-pointer"
+              className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 active:scale-95 transition-all cursor-pointer shrink-0"
+              aria-label="Cerrar"
             >
-              <span className="material-symbols-outlined">close</span>
+              <span className="material-symbols-outlined text-lg leading-none">
+                close
+              </span>
             </button>
           </div>
         </div>
-        <div className="p-6 overflow-y-auto">{children}</div>
+
+        {/* Content Body */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 overscroll-contain">
+          {children}
+        </div>
+
+        {/* Sticky Footer */}
+        {footer && (
+          <div className="p-3.5 sm:p-4 bg-white border-t border-slate-100 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -605,12 +632,27 @@ export const IonAlert: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onDidDismiss} />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+        onClick={onDidDismiss}
+      />
+
       <div className="relative z-10 w-full max-w-sm bg-white rounded-2xl p-6 shadow-2xl border border-slate-200 text-center animate-in zoom-in-95 duration-200">
         <h3 className="font-bold text-lg text-slate-900 mb-1">{header}</h3>
-        {subHeader && <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{subHeader}</h4>}
-        {message && <p className="text-sm text-slate-600 mb-6">{message}</p>}
+
+        {subHeader && (
+          <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+            {subHeader}
+          </h4>
+        )}
+
+        {message && (
+          <p className="text-sm text-slate-600 mb-6">
+            {message}
+          </p>
+        )}
+
         <div className="flex gap-2 justify-center">
           {buttons.map((btn, idx) => (
             <button
@@ -650,6 +692,7 @@ export const IonToast: React.FC<{
       const timer = setTimeout(() => {
         onDidDismiss();
       }, 3500);
+
       return () => clearTimeout(timer);
     }
   }, [isOpen, onDidDismiss]);
@@ -657,19 +700,33 @@ export const IonToast: React.FC<{
   if (!isOpen) return null;
 
   let bg = 'bg-slate-900 text-white';
+
   if (color === 'success') bg = 'bg-emerald-700 text-white';
   if (color === 'danger') bg = 'bg-red-600 text-white';
   if (color === 'warning') bg = 'bg-yellow-400 text-slate-900';
 
   return (
-    <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md animate-in slide-in-from-top duration-300">
+    <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[300] w-11/12 max-w-md animate-in slide-in-from-top duration-300">
       <div className={`p-3.5 rounded-2xl shadow-xl flex items-center justify-between gap-3 border border-white/10 ${bg}`}>
         <div className="flex items-center gap-3">
-          {icon && <span className="material-symbols-outlined text-xl">{icon}</span>}
-          <span className="text-sm font-semibold">{message}</span>
+          {icon && (
+            <span className="material-symbols-outlined text-xl">
+              {icon}
+            </span>
+          )}
+
+          <span className="text-sm font-semibold">
+            {message}
+          </span>
         </div>
-        <button onClick={onDidDismiss} className="p-1 opacity-80 hover:opacity-100 cursor-pointer">
-          <span className="material-symbols-outlined text-lg">close</span>
+
+        <button
+          onClick={onDidDismiss}
+          className="p-1 opacity-80 hover:opacity-100 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-lg">
+            close
+          </span>
         </button>
       </div>
     </div>
