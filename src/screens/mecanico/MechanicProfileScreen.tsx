@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { AppImage } from '../../components/shared/AppImage';
-import { AvatarUploadModal } from '../../components/shared/AvatarUploadModal';
 import {
   IonHeader, IonToolbar, IonTitle, IonAvatar, IonCard,
   IonCardContent, IonButton, IonBadge, IonToggle, IonModal,
@@ -14,9 +13,8 @@ const AVAILABLE_SPECIALTIES = [
 ];
 
 export const MechanicProfileScreen: React.FC = () => {
-  const { isMechanicOnline, currentUser, setIsMechanicOnline, navigateTo, logout, showToast } = useApp();
+  const { isMechanicOnline, setIsMechanicOnline, navigateTo, logout, showToast } = useApp();
 
-  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [name, setName] = useState('Cargando...');
   const [lastName, setLastName] = useState('');
@@ -144,44 +142,18 @@ export const MechanicProfileScreen: React.FC = () => {
         {/* Profile Card */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-
-
-            {/* FOTO + BOTÓN CAMBIAR FOTO */}
-            <div className="relative flex flex-col items-center group">
-              <button
-                type="button"
-                onClick={() => setIsPhotoModalOpen(true)}
-                className="relative cursor-pointer block rounded-2xl focus:outline-hidden ring-offset-2 focus:ring-2 focus:ring-blue-600 transition-transform active:scale-95"
-                title="Cambiar foto de perfil"
-              >
-                <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-900 shadow-sm ring-2 ring-blue-500/20">
-                  <AppImage
-                    src={avatarUrl || currentUser?.avatarUrl}
-                    alt={name}
-                    type="avatar"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center shadow-xs border border-white group-hover:bg-blue-700 transition-colors">
-                  <span className="material-symbols-outlined text-xs">
-                    photo_camera
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsPhotoModalOpen(true)}
-                className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/80 px-2.5 py-0.5 rounded-full border border-blue-200 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-xs">
-                  photo_camera
-                </span>
-                <span>Cambiar foto</span>
-              </button>
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-yellow-400 bg-slate-100 shadow-sm flex items-center justify-center">
+                {avatarUrl ? (
+                  <AppImage src={avatarUrl} alt={name} type="mechanic" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="material-symbols-outlined text-4xl text-slate-400">person</span>
+                )}
+              </div>
+              <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-slate-900 w-6 h-6 rounded-full flex items-center justify-center shadow-xs">
+                <span className="material-symbols-outlined text-xs">verified</span>
+              </div>
             </div>
-
 
             <div className="flex-1 text-center sm:text-left space-y-1">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -348,17 +320,6 @@ export const MechanicProfileScreen: React.FC = () => {
           </form>
         </div>
       </IonModal>
-
-      {/* Modal para Subir y Actualizar la Foto */}
-      <AvatarUploadModal
-        isOpen={isPhotoModalOpen}
-        onClose={() => {
-          setIsPhotoModalOpen(false);
-          cargarPerfil(); // Vuelve a pedir los datos a la API para refrescar la foto inmediatamente
-        }}
-        role="mecanico"
-      />
     </div>
   );
 };
-    

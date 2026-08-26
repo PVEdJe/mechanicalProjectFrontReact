@@ -9,11 +9,12 @@ import {
 } from '../../components/ionic/IonicComponents';
 
 export const AdminDashboardScreen: React.FC = () => {
-  const { currentUser, navigateTo } = useApp();
+  const { navigateTo } = useApp();
   
   // Estados para datos reales
   const [rescues, setRescues] = useState<any[]>([]);
-  const [pendingMechanicsCount, setPendingMechanicsCount] = useState(0); // Estado real
+  const [pendingMechanicsCount, setPendingMechanicsCount] = useState(0);
+  const [adminData, setAdminData] = useState({ avatarUrl: '', name: 'Admin' });
   const [stats, setStats] = useState({
     activos: 0,
     enRuta: 0,
@@ -29,12 +30,23 @@ export const AdminDashboardScreen: React.FC = () => {
         const token = localStorage.getItem('access_token');
         if (!token) return;
 
-        // Cargar todos los rescates
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const adminRes = await fetch(`http://localhost:3000/users/${payload.sub}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (adminRes.ok) {
+          const adminInfo = await adminRes.json();
+          setAdminData({ 
+            avatarUrl: adminInfo.avatarUrl || '', 
+            name: adminInfo.firstName || 'Admin' 
+          });
+        }
+
         const rescuesRes = await fetch(`http://localhost:3000/rescues`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        // Cargar todos los usuarios para armar la flota y validaciones
         const usersRes = await fetch(`http://localhost:3000/users/mecanicos/lista`, {
            headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -43,21 +55,19 @@ export const AdminDashboardScreen: React.FC = () => {
           const allRescues = await rescuesRes.json();
           const allMechanics = await usersRes.json();
 
-          //Conteo de mecánicos pendientes 
           const pendientes = allMechanics.filter((m: any) => m.validationStatus === 'pending');
           setPendingMechanicsCount(pendientes.length);
 
-          // Cálculos de Rescates Activos
+
           const activeRescues = allRescues.filter((r: any) => ['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ON_SITE', 'IN_PROGRESS'].includes(r.status));
           const enRutaCount = allRescues.filter((r: any) => ['ACCEPTED', 'EN_ROUTE'].includes(r.status)).length;
           const enSitioCount = allRescues.filter((r: any) => ['ON_SITE', 'IN_PROGRESS'].includes(r.status)).length;
 
-          // Cálculo de Facturación (Suma de los finalizados)
+
           const facturacionTotal = allRescues
             .filter((r: any) => r.status === 'COMPLETED' && r.totalCost)
             .reduce((acc: number, r: any) => acc + Number(r.totalCost), 0);
 
-          // Cálculos de Flota
           const activosCount = allMechanics.filter((m: any) => m.isAvailable).length;
 
           setStats({
@@ -77,7 +87,7 @@ export const AdminDashboardScreen: React.FC = () => {
     };
 
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 4000); // Refresco cada 4 segundos
+    const interval = setInterval(fetchDashboardData, 4000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -137,13 +147,18 @@ export const AdminDashboardScreen: React.FC = () => {
               className="cursor-pointer active:scale-95 transition-transform"
               title="Ver Perfil de Administrador"
             >
-              <IonAvatar size="sm" className="border border-slate-200 hover:border-blue-500">
-                <AppImage
-                  src={currentUser.avatarUrl}
-                  alt={currentUser.name}
-                  type="avatar"
-                  className="w-full h-full object-cover"
-                />
+              <IonAvatar size="sm" className="border border-slate-200 hover:border-blue-500 overflow-hidden flex items-center justify-center bg-slate-100">
+                {/* 👇 AHORA USAMOS LA FOTO REAL EXTRAÍDA DE MYSQL 👇 */}
+                {adminData.avatarUrl ? (
+                  <AppImage
+                    src={adminData.avatarUrl}
+                    alt={adminData.name}
+                    type="avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-slate-400">person</span>
+                )}
               </IonAvatar>
             </div>
           </div>
